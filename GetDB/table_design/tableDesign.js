@@ -80,17 +80,19 @@ document.addEventListener("DOMContentLoaded", function () {
         const endIndex = startIndex + itemsPerPage;
         return orders.slice(startIndex, endIndex);
     }
-
+    
     function updatePagination() {
-        const totalPages = Math.ceil(allOrders.length / itemsPerPage);
+        const totalOrders = filteredOrders.length > 0 ? filteredOrders.length : allOrders.length;
+        const totalPages = Math.ceil(totalOrders / itemsPerPage);
         const pageInfo = document.getElementById("pageInfo");
         const prevButton = document.getElementById("prevPage");
         const nextButton = document.getElementById("nextPage");
-        
+    
         pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
         prevButton.disabled = currentPage <= 1;
         nextButton.disabled = currentPage >= totalPages;
     }
+    
 
     function setupFilterAndSearch() {
         // Search functionality
@@ -121,19 +123,23 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("prevPage").addEventListener("click", function() {
             if (currentPage > 1) {
                 currentPage--;
-                renderOrdersTable(paginateOrders(allOrders));
+                const dataToPaginate = filteredOrders.length > 0 ? filteredOrders : allOrders;
+                renderOrdersTable(paginateOrders(dataToPaginate));
                 updatePagination();
             }
         });
         
         document.getElementById("nextPage").addEventListener("click", function() {
-            const totalPages = Math.ceil(allOrders.length / itemsPerPage);
+            const totalOrders = filteredOrders.length > 0 ? filteredOrders.length : allOrders.length;
+            const totalPages = Math.ceil(totalOrders / itemsPerPage);
             if (currentPage < totalPages) {
                 currentPage++;
-                renderOrdersTable(paginateOrders(allOrders));
+                const dataToPaginate = filteredOrders.length > 0 ? filteredOrders : allOrders;
+                renderOrdersTable(paginateOrders(dataToPaginate));
                 updatePagination();
             }
         });
+        
     }
 
     function searchOrders(searchTerm) {
@@ -164,21 +170,54 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function filterOrdersByStatus(status) {
         if (!status) {
+            filteredOrders = allOrders; // Reset ke semua data
             renderOrdersTable(paginateOrders(allOrders));
             updatePagination();
             return;
         }
-        
-        const filteredOrders = allOrders.filter(order => 
-            order.print_status === status
+    
+        // Filter berdasarkan status_print
+        filteredOrders = allOrders.filter(order => 
+            order.status_print === status
         );
-        
+    
         currentPage = 1;
         renderOrdersTable(paginateOrders(filteredOrders));
         updatePagination();
-        
+    
         showResultPopup(`Ditemukan ${filteredOrders.length} pesanan dengan status: ${status}`);
     }
+
+    document.getElementById("sortSelect").addEventListener("change", function () {
+        const sortValue = this.value;
+        sortOrders(sortValue);
+    });
+    
+    function sortOrders(sortValue) {
+        if (!sortValue) return;
+    
+        const [field, direction] = sortValue.split("_");
+        const fieldMap = {
+            id: "id_input",
+            deadline: "deadline",
+            qty: "qty"
+        };
+        const validField = fieldMap[field] || field;
+    
+        const dataToSort = filteredOrders.length > 0 ? filteredOrders : allOrders;
+    
+        const sortedOrders = [...dataToSort].sort((a, b) => {
+            if (a[validField] < b[validField]) return direction === "asc" ? -1 : 1;
+            if (a[validField] > b[validField]) return direction === "asc" ? 1 : -1;
+            return 0;
+        });
+    
+        renderOrdersTable(paginateOrders(sortedOrders));
+        updatePagination();
+    }
+    
+    
+    
 
     function formatTanggal(dateString) {
         if (!dateString) return "-";
