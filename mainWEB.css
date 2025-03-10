@@ -1,0 +1,261 @@
+/* Global Responsive Styles */
+:root {
+    /* Mobile-friendly variables */
+    --mobile-sidebar-width: 250px;
+    --mobile-header-height: 60px;
+    --mobile-spacing: 15px;
+    --mobile-font-size: 14px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+.mobile-dashboard {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -250px;
+    width: 250px;
+    height: 100%;
+    background-color: #2a2a3c;
+    color: white;
+    transition: left 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.sidebar.open {
+    left: 0;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #1a1a2a;
+    border-bottom: 1px solid #353549;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.logo i {
+    margin-right: 10px;
+    color: #30c78d;
+}
+
+.close-sidebar {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.sidebar-menu {
+    padding: 15px 0;
+}
+
+.menu-section h3 {
+    color: #777;
+    padding: 10px 15px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.sidebar-menu ul {
+    list-style: none;
+}
+
+.sidebar-menu li {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.sidebar-menu li:hover {
+    background-color: #353549;
+}
+
+.sidebar-menu li i {
+    margin-right: 10px;
+    color: #30c78d;
+    min-width: 20px;
+    text-align: center;
+}
+
+.sidebar-footer {
+    border-top: 1px solid #353549;
+    padding: 15px;
+}
+
+.footer-menu {
+    display: flex;
+    justify-content: space-between;
+}
+
+.footer-menu button {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    color: #777;
+    cursor: pointer;
+}
+
+.footer-menu button i {
+    margin-right: 8px;
+}
+
+/* Main Content Styles */
+.main-content {
+    width: 100%;
+    transition: margin-left 0.3s ease;
+    overflow-x: hidden;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.menu-toggle {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+.notifications {
+    position: relative;
+    margin-right: 15px;
+}
+
+.notifications .badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: red;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+}
+
+.user-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+main {
+    padding: 15px;
+}
+
+.welcome-message {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .sidebar {
+        width: 250px;
+        left: -250px;
+    }
+    
+    .sidebar.open {
+        left: 0;
+    }
+    
+    .main-content {
+        width: 100%;
+        margin-left: 0;
+    }
+    
+    header {
+        padding: 10px 15px;
+    }
+    
+    .menu-toggle {
+        display: block;
+    }
+}
+
+@media screen and (min-width: 769px) {
+    .sidebar {
+        left: 0;
+        width: 250px;
+    }
+    
+    .main-content {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+    }
+    
+    .menu-toggle {
+        display: none;
+    }
+}
+
+/* Overlay for mobile sidebar */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}

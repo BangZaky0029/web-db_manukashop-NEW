@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Manuka Mobile Dashboard</title>
+    <link rel="stylesheet" href="mainWEB.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="mobile-dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-leaf"></i>
+                    <span>MANUKA</span>
+                </div>
+                <button id="closeSidebar" class="close-sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-menu">
+                <div class="menu-section">
+                    <h3>MAIN</h3>
+                    <ul>
+                        <li data-page="table-pesanan">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Table Pesanan</span>
+                        </li>
+                        <li data-page="table-input-order">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Table Input Order</span>
+                        </li>
+                        <li data-page="form-input-pesanan">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Form Input Pesanan</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="menu-section">
+                    <h3>PRODUCTION</h3>
+                    <ul>
+                        <li data-page="table-design">
+                            <i class="fas fa-industry"></i>
+                            <span>Table Design</span>
+                        </li>
+                        <li data-page="table-produksi">
+                            <i class="fas fa-industry"></i>
+                            <span>Table Produksi</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="footer-menu">
+                    <button data-page="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </button>
+                    <button data-page="account">
+                        <i class="fas fa-user-circle"></i>
+                        <span>Account</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <header>
+                <button id="openSidebar" class="menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <div class="header-right">
+                    <div class="notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">3</span>
+                    </div>
+                    <div class="user-info">
+                        <img src="https://via.placeholder.com/40" alt="User Avatar">
+                        <span>Admin User</span>
+                    </div>
+                </div>
+            </header>
+
+            <main>
+                <div id="pageContent">
+                    <div class="welcome-message">
+                        <h2>Welcome to Manuka Shop Dashboard</h2>
+                        <p>Select a menu item to get started.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="mainWEB.js"></script>
+</body>
+</html>
