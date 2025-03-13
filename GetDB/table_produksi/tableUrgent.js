@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (data.status === "success" && Array.isArray(data.data)) {
                 allOrders = data.data;
                 renderOrdersTable(paginateOrders(allOrders));
-                updatePagination();
+                updatePagination(allOrders);
             } else {
                 console.error("Gagal mengambil data:", data.message || "Format response salah");
                 showResultPopup("Gagal mengambil data pesanan.", true);

@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", function () {
             await fetchOrders();
             // Add event listeners for filter and search
             setupFilterAndSearch();
+
+            setupPaginationControls();
             // Setup PDF and Excel buttons
         } catch (error) {
             console.error("Error initializing app:", error);
@@ -64,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (data.status === "success") {
                 allOrders = data.data;
                 renderOrdersTable(paginateOrders(allOrders));
-                updatePagination();
+                updatePagination(allOrders);
             } else {
                 console.error("Gagal mengambil data:", data.message);
                 showResultPopup("Gagal mengambil data pesanan.", true);
@@ -80,18 +82,92 @@ document.addEventListener("DOMContentLoaded", function () {
         const endIndex = startIndex + itemsPerPage;
         return orders.slice(startIndex, endIndex);
     }
+
+    function updateTableDisplay() {
+        // Determine which dataset to use
+        const dataToDisplay = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        
+        // Paginate the data
+        const paginatedData = paginateOrders(dataToDisplay);
+        
+        // Render the table
+        renderOrdersTable(paginatedData);
+        
+        // Update pagination
+        updatePagination(dataToDisplay);
+    }
     
     function updatePagination() {
-        const totalOrders = filteredOrders.length > 0 ? filteredOrders.length : allOrders.length;
+        const totalOrders = filteredOrders.length > 0 ? filteredOrders.length : allOrders.length; // Menghitung total orders
         const totalPages = Math.ceil(totalOrders / itemsPerPage);
         const pageInfo = document.getElementById("pageInfo");
         const prevButton = document.getElementById("prevPage");
         const nextButton = document.getElementById("nextPage");
+        const firstButton = document.getElementById("firstPage");
+        const lastButton = document.getElementById("lastPage");
     
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
+        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`; // Memperbarui teks halaman
         prevButton.disabled = currentPage <= 1;
         nextButton.disabled = currentPage >= totalPages;
+        firstButton.disabled = currentPage <= 1;
+        lastButton.disabled = currentPage >= totalPages;
     }
+
+    function setupPaginationControls() {
+        // Tombol First Page
+        document.getElementById("firstPage").addEventListener("click", function() {
+            currentPage = 1;
+            updateTableDisplay();
+        });
+    
+        // Tombol Last Page
+        document.getElementById("lastPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            currentPage = totalPages;
+            updateTableDisplay();
+        });
+    
+        // Tombol Previous Page
+        document.getElementById("prevPage").addEventListener("click", function() {
+            if (currentPage > 1) {
+                currentPage = Math.min(totalPages, currentPage - 1); // Menambah 1 halaman
+                updateTableDisplay();
+            }
+        });
+    
+        // Tombol Next Page
+        document.getElementById("nextPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage = Math.min(totalPages, currentPage + 1); // Menambah 1 halaman
+                updateTableDisplay();
+            }
+        });
+    
+        // Input Halaman Manual
+        const pageInput = document.getElementById("pageInput");
+        document.getElementById("goPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            const pageNum = parseInt(pageInput.value, 10);
+    
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                currentPage = pageNum;
+                updateTableDisplay();
+            } else {
+                alert(`Halaman tidak valid. Masukkan nomor antara 1 hingga ${totalPages}.`);
+            }
+        });
+    
+        // Tekan Enter pada Input Halaman
+        pageInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                document.getElementById("goPage").click();
+            }
+        });
+    }
+    
+    // Panggil fungsi setup kontrol pagination saat dokumen siap
+    // setupPaginationControls();
     
 
     function setupFilterAndSearch() {
@@ -216,7 +292,37 @@ document.addEventListener("DOMContentLoaded", function () {
         updatePagination();
     }
     
+    function highlightDeadline(dateString) {
+        if (!dateString) return "-";
     
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset jam agar hanya tanggal yang diperhitungkan
+    
+        const deadlineDate = new Date(dateString);
+        deadlineDate.setHours(0, 0, 0, 0);
+    
+        const timeDiff = deadlineDate - today;
+        const oneDay = 24 * 60 * 60 * 1000; // Jumlah milidetik dalam sehari
+    
+        let backgroundColor = "#fff"; // Default warna putih
+        let textColor = "#000"; // Default warna hitam
+    
+        if (timeDiff === 0) {
+            // Jika deadline hari ini
+            backgroundColor = "#ff4d4d"; // Merah
+            textColor = "#fff";
+        } else if (timeDiff === oneDay) {
+            // Jika deadline besok
+            backgroundColor = "#ffcc00"; // Kuning
+            textColor = "#000";
+        } else if (timeDiff > oneDay) {
+            // Jika deadline masih jauh
+            backgroundColor = "#28a745"; // Hijau
+            textColor = "#fff";
+        }
+    
+        return `<span style="background-color: ${backgroundColor}; color: ${textColor}; padding: 5px; border-radius: 5px;">${formatTanggal(dateString)}</span>`;
+    }
     
 
     function formatTanggal(dateString) {
@@ -229,7 +335,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
     
-        return `${day}-${month}-${year}`;
+        return `${day}-${month}`;
     }
     
     function renderOrdersTable(orders) {
@@ -259,7 +365,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <button class="submit-link-btn" data-id="${order.id_input}">Submit</button>
                     <button class="open-link-btn" data-id="${order.id_input}">🔗</button>
                 </td>
-                <td>${formatTanggal(order.deadline)}</td>
+                <td>${highlightDeadline(order.deadline)}</td>
                 <td>
                     <select class="status-print option" data-id="${order.id_input}" data-column="print_status">
                         <option value="-" ${order.status_print === '-' ? 'selected' : ''}>-</option>
