@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Manajemen Pesanan</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=CVS9QHHVqqW5&format=png&color=000000">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="tablePesanan.css">
@@ -23,7 +24,11 @@
                 </a>
                 
             </div>
-            
+            <div class="download-buttons">
+                <button id="downloadAllExcel" class="btn btn-success">
+                    <i class="fas fa-file-excel"></i> Download Semua Data
+                </button>
+            </div>            
             <div class="search-container">
                 
                 <select id="filterStatus">
@@ -87,9 +92,13 @@
         </div>
         
         <div class="pagination-container">
+            <button id="firstPage" class="pagination-btn"><i class="fas fa-angle-double-left"></i></button>
             <button id="prevPage" class="pagination-btn"><i class="fas fa-chevron-left"></i></button>
             <span id="pageInfo">Halaman 1 dari 1</span>
+            <input type="number" id="pageInput" class="page-input" min="1" placeholder="Page" />
+            <button id="goPage" class="pagination-btn">Go</button>
             <button id="nextPage" class="pagination-btn"><i class="fas fa-chevron-right"></i></button>
+            <button id="lastPage" class="pagination-btn"><i class="fas fa-angle-double-right"></i></button>
         </div>
     </div>
     
@@ -119,6 +128,18 @@
             <div class="popup-buttons">
                 <button id="confirmUpdateBtn" class="btn-confirm">Ya, Update</button>
                 <button id="cancelUpdateBtn" class="btn-cancel">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Code Confirmation Popup -->
+    <div class="popup" id="adminCodePopup">
+        <div class="popup-content">
+            <h3>Masukkan Kode Admin</h3>
+            <input type="password" id="adminCodeInput" placeholder="Masukkan kode admin..." />
+            <div class="popup-buttons">
+                <button id="confirmAdminCode" class="btn-confirm">Konfirmasi</button>
+                <button id="cancelAdminCode" class="btn-cancel">Batal</button>
             </div>
         </div>
     </div>

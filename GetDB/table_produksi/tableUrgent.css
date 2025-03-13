@@ -498,3 +498,12 @@ select:focus, input[type="text"]:focus {
 .option-REJECT-PRINT-ULANG { background-color: #FF0000; color: white; } /* Merah */
 .option-TAS-BLM-ADA { background-color: #8B008B; color: white; } /* Ungu tua */
 .option-DONE { background-color: #008000; color: white; } /* Hijau */
+
+.page-input {
+    width: 80px;
+    margin: 0 5px;
+    text-align: center;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    outline: none;
+}

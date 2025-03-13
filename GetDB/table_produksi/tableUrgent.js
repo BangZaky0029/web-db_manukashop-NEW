@@ -62,12 +62,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Initialize the page
     initApp();
-
+    
     async function initApp() {
         try {
             // Show loading overlay
             showLoadingOverlay();
-
+            
             // First load reference data
             await fetchReferenceData();
             // Then fetch orders
@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
             setupFilterAndSearch();
             // Setup PDF and Excel buttons
             setupDownloadButtons();
-
+            
             // setupAutoRefresh();
         } catch (error) {
             console.error("Error initializing app:", error);
@@ -87,38 +87,57 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function setupAutoRefresh() {
-        const refreshInterval = 10000; // 10 detik
-    
-        async function autoRefresh() {
-            try {
-                console.log("Auto refresh triggered");
-                await fetchOrders();
-            } catch (error) {
-                console.error("Auto refresh failed:", error);
-                showResultPopup("Gagal melakukan refresh otomatis.", true);
-            } finally {
-                setTimeout(autoRefresh, refreshInterval); // Memanggil dirinya sendiri
-            }
+    // Function to simulate potential longer loading time
+        function simulateSlowLoading() {
+            return new Promise(resolve => {
+                setTimeout(resolve, Math.random() * 1500 + 500); // Random delay between 500-2000ms
+            });
         }
+
+
+// =================================================================================================== //
+                                          // API ENDPOINT //
+// =================================================================================================== //
+
     
-        console.log("Auto refresh enabled");
-        autoRefresh(); // Mulai auto-refresh pertama kali
+    async function fetchReferenceData() {
+        await simulateSlowLoading(); // Simulate potential slow network
+    
+        try {
+            const response = await fetch("http://100.117.80.112:5000/api/references");
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+    
+            if (data.table_admin) {
+                data.table_admin.forEach(a => adminList[a.ID] = a.nama);
+            }
+            if (data.table_desainer) {
+                data.table_desainer.forEach(d => desainerList[d.ID] = d.nama);
+            }
+            if (data.table_kurir) {
+                data.table_kurir.forEach(k => kurirList[k.ID] = k.nama);
+            }
+            if (data.table_penjahit) {
+                data.table_penjahit.forEach(p => penjahitList[p.ID] = p.nama);
+            }
+            if (data.table_qc) {
+                data.table_qc.forEach(q => qcList[q.ID] = q.nama);
+            }
+    
+            console.log("Reference data loaded successfully");
+    
+        } catch (error) {
+            console.error("Gagal mengambil data referensi:", error);
+            showResultPopup("Gagal memuat data referensi. Beberapa fitur mungkin tidak berfungsi dengan baik.", true);
+        }
     }
 
-    //
     
-
     
-
-// Function to simulate potential longer loading time
-    function simulateSlowLoading() {
-        return new Promise(resolve => {
-            setTimeout(resolve, Math.random() * 1500 + 500); // Random delay between 500-2000ms
-        });
-    }
-    
-
     async function fetchOrders() {
         try {
             const response = await fetch("http://100.117.80.112:5000/api/get_table_urgent");
@@ -145,29 +164,255 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
+    async function fetchLayoutLink(id_input) {
+        try {
+            const response = await fetch(`http://100.117.80.112:5000/api/get-layout?id_input=${encodeURIComponent(id_input)}`);
+            const data = await response.json();
+    
+            if (response.ok && data.length > 0) {
+                return data[0].layout_link || "-"; // Mengembalikan link jika ada
+            }
+            return "-"; // Jika tidak ada data, kembalikan "-"
+        } catch (error) {
+            console.error("Error fetching layout link:", error);
+            return "-";
+        }
+    }
+
+    async function fetchNamaKet(idInput) {
+        const baseUrl = "http://100.117.80.112:5000"; // Sesuaikan dengan URL API kamu
+        const url = `${baseUrl}/api/get_nama_ket/${idInput}`;
+    
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+    
+            const data = await response.json();
+            
+            // Pastikan mengembalikan hanya `nama_ket` agar tidak error
+            return data.nama_ket || "Tidak ada keterangan"; 
+    
+        } catch (error) {
+            console.error("Gagal mengambil keterangan pesanan:", error);
+            return "Error mengambil data"; 
+        }
+    }
+
+    async function fetchLinkFoto(id_input) {
+        if (!id_input || id_input === "-") {
+            console.warn("ID tidak valid:", id_input);
+            return "-";
+        }
+    
+        try {
+            const response = await fetch(`http://100.117.80.112:5000/api/get_link_foto/${id_input}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+    
+            if (!data || !data.data || typeof data.data.link !== "string") {
+                console.warn("Format response tidak valid atau link kosong:", data);
+                return "-";
+            }
+            
+            return data.data.link;
+    
+        } catch (error) {
+            console.error("Error fetching link foto:", error);
+            return "-";
+        }
+    }
+
+
+
+
+// =================================================================================================== //
+                                          // API ENDPOINT //
+// =================================================================================================== //
+
+
+
+
+
+
+// =================================================================================================== //
+                                          // FILTER SEARCH //
+// =================================================================================================== //
+
+
+
+    function setupFilterAndSearch() {
+        // Enhanced Search functionality
+        const searchInput = document.getElementById("searchInput");
+        const searchButton = document.getElementById("searchButton");
+        const filterStatus = document.getElementById("filterStatus");
+        const sortSelect = document.getElementById("sortSelect"); // Add a sort dropdown
+
+        // Advanced search with multiple criteria
+        searchButton.addEventListener("click", function() {
+            performAdvancedSearch(searchInput.value);
+        });
+
+        searchInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                performAdvancedSearch(this.value);
+            }
+        });
+
+        // Enhanced Status Filter
+        filterStatus.addEventListener("change", function() {
+            filterOrdersByStatus(this.value);
+        });
+
+        // Add sorting functionality
+        sortSelect.addEventListener("change", function() {
+            sortOrders(this.value);
+        });
+
+        function resetSearch() {
+            // Clear search input
+            document.getElementById("searchInput").value = '';
+            document.getElementById("filterStatus").value = '';
+            document.getElementById("sortSelect").value = '';
+
+            // Reset to original state
+            filteredOrders = [];
+            currentPage = 1;
+            updateTableDisplay();
+        }
+
+        // Refresh button
+        const refreshButton = document.getElementById("refreshButton");
+        refreshButton.addEventListener("click", function() {
+            resetSearch();
+        });
+
+        // Pagination controls
+        document.getElementById("prevPage").addEventListener("click", function() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateTableDisplay();
+            }
+        });
+    }
+
+// =================================================================================================== //
+                                          // FILTER SEARCH //
+// =================================================================================================== //
+
+
+// =================================================================================================== //
+                                          // PAGINATION //
+// =================================================================================================== //
+
+
+    function updatePagination(orders) {
+        const totalOrders = orders.length;
+        const totalPages = Math.ceil(totalOrders / itemsPerPage);
+        const pageInfo = document.getElementById("pageInfo");
+        const prevButton = document.getElementById("prevPage");
+        const nextButton = document.getElementById("nextPage");
+        const firstButton = document.getElementById("firstPage");
+        const lastButton = document.getElementById("lastPage");
+
+        // Pastikan currentPage tidak melebihi total halaman
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        // Update halaman informasi
+        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
+        
+        // Disable/Enable tombol sesuai halaman
+        prevButton.disabled = currentPage <= 1;
+        nextButton.disabled = currentPage >= totalPages;
+        firstButton.disabled = currentPage <= 1;
+        lastButton.disabled = currentPage >= totalPages;
+    }
+
+
     function paginateOrders(orders) {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         return orders.slice(startIndex, endIndex);
     }
 
-    function updatePagination() {
-        const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
-        const pageInfo = document.getElementById("pageInfo");
-        const prevButton = document.getElementById("prevPage");
-        const nextButton = document.getElementById("nextPage");
-        
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
-        prevButton.disabled = currentPage <= 1;
-        nextButton.disabled = currentPage >= totalPages;
+    
+    
+    function setupPaginationControls() {
+        // Tombol First Page
+        document.getElementById("firstPage").addEventListener("click", function() {
+            currentPage = 1;
+            updateTableDisplay();
+        });
+    
+        // Tombol Last Page
+        document.getElementById("lastPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            currentPage = totalPages;
+            updateTableDisplay();
+        });
+    
+        // Tombol Previous Page
+        document.getElementById("prevPage").addEventListener("click", function() {
+            if (currentPage > 1) {
+                currentPage = Math.min(totalPages, currentPage - 1); // Menambah 1 halaman
+                updateTableDisplay();
+            }
+        });
+    
+        // Tombol Next Page
+        document.getElementById("nextPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage = Math.min(totalPages, currentPage + 1); // Menambah 1 halaman
+                updateTableDisplay();
+            }
+        });
+    
+        // Input Halaman Manual
+        const pageInput = document.getElementById("pageInput");
+        document.getElementById("goPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            const pageNum = parseInt(pageInput.value, 10);
+    
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                currentPage = pageNum;
+                updateTableDisplay();
+            } else {
+                alert(`Halaman tidak valid. Masukkan nomor antara 1 hingga ${totalPages}.`);
+            }
+        });
+    
+        // Tekan Enter pada Input Halaman
+        pageInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                document.getElementById("goPage").click();
+            }
+        });
     }
-
+    
+    function updateTableDisplay() {
+        const ordersToDisplay = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        const paginatedOrders = paginateOrders(ordersToDisplay);
+        renderOrdersTable(paginatedOrders);
+        updatePagination(ordersToDisplay);
+    }
+    
+    
+    // Panggil fungsi setup kontrol pagination saat dokumen siap
+    setupPaginationControls();
     // Updated performAdvancedSearch function with proper checks for null/undefined in references:
-function performAdvancedSearch(searchTerm) {
-    if (!searchTerm.trim()) {
-        resetSearch();
-        return;
-    }
+
+    function performAdvancedSearch(searchTerm) {
+        if (!searchTerm.trim()) {
+            resetSearch();
+            return;
+        }
 
     const searchTermLower = searchTerm.toLowerCase().trim();
 
@@ -194,74 +439,10 @@ function performAdvancedSearch(searchTerm) {
 }
 
 
-
-function setupFilterAndSearch() {
-    // Enhanced Search functionality
-    const searchInput = document.getElementById("searchInput");
-    const searchButton = document.getElementById("searchButton");
-    const filterStatus = document.getElementById("filterStatus");
-    const sortSelect = document.getElementById("sortSelect"); // Add a sort dropdown
-
-    // Advanced search with multiple criteria
-    searchButton.addEventListener("click", function() {
-        performAdvancedSearch(searchInput.value);
-    });
-
-    searchInput.addEventListener("keypress", function(e) {
-        if (e.key === "Enter") {
-            performAdvancedSearch(this.value);
-        }
-    });
-
-    // Enhanced Status Filter
-    filterStatus.addEventListener("change", function() {
-        filterOrdersByStatus(this.value);
-    });
-
-    // Add sorting functionality
-    sortSelect.addEventListener("change", function() {
-        sortOrders(this.value);
-    });
-
-    function resetSearch() {
-        // Clear search input
-        document.getElementById("searchInput").value = '';
-        document.getElementById("filterStatus").value = '';
-        document.getElementById("sortSelect").value = '';
-
-        // Reset to original state
-        filteredOrders = [];
-        currentPage = 1;
-        updateTableDisplay();
-    }
-
-    // Refresh button
-    const refreshButton = document.getElementById("refreshButton");
-    refreshButton.addEventListener("click", function() {
-        resetSearch();
-    });
-
-    // Pagination controls
-    document.getElementById("prevPage").addEventListener("click", function() {
-        if (currentPage > 1) {
-            currentPage--;
-            updateTableDisplay();
-        }
-    });
-
-    document.getElementById("nextPage").addEventListener("click", function() {
-        const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
-        if (currentPage < totalPages) {
-            currentPage++;
-            updateTableDisplay();
-        }
-    });
-}
-
     function updateTableDisplay() {
         const ordersToDisplay = filteredOrders.length > 0 ? filteredOrders : allOrders;
         renderOrdersTable(paginateOrders(ordersToDisplay));
-        updatePagination();
+        updatePagination(ordersToDisplay);
     }
 
 
@@ -465,41 +646,6 @@ function setupFilterAndSearch() {
         }
     }
     
-    async function fetchReferenceData() {
-        await simulateSlowLoading(); // Simulate potential slow network
-
-        try {
-            const response = await fetch("http://100.117.80.112:5000/api/references");
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-    
-            if (data.table_admin) {
-                data.table_admin.forEach(a => adminList[a.ID] = a.nama);
-            }
-            if (data.table_desainer) {
-                data.table_desainer.forEach(d => desainerList[d.ID] = d.nama);
-            }
-            if (data.table_kurir) {
-                data.table_kurir.forEach(k => kurirList[k.ID] = k.nama);
-            }
-            if (data.table_penjahit) {
-                data.table_penjahit.forEach(p => penjahitList[p.ID] = p.nama);
-            }
-            if (data.table_qc) {
-                data.table_qc.forEach(q => qcList[q.ID] = q.nama);
-            }
-    
-            console.log("Reference data loaded successfully");
-    
-        } catch (error) {
-            console.error("Gagal mengambil data referensi:", error);
-            showResultPopup("Gagal memuat data referensi. Beberapa fitur mungkin tidak berfungsi dengan baik.", true);
-        }
-    }
 
     function addDescriptionEventListeners() {
         document.querySelectorAll(".desc-table").forEach(item => {
@@ -519,33 +665,6 @@ function setupFilterAndSearch() {
         }
     }
 
-    async function fetchLinkFoto(id_input) {
-        if (!id_input || id_input === "-") {
-            console.warn("ID tidak valid:", id_input);
-            return "-";
-        }
-    
-        try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get_link_foto/${id_input}`);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-    
-            if (!data || !data.data || typeof data.data.link !== "string") {
-                console.warn("Format response tidak valid atau link kosong:", data);
-                return "-";
-            }
-            
-            return data.data.link;
-    
-        } catch (error) {
-            console.error("Error fetching link foto:", error);
-            return "-";
-        }
-    }
 
     async function showDescriptionModal(order) {
         if (!order.id_input) {
@@ -592,42 +711,6 @@ function setupFilterAndSearch() {
         }
     }
 
-    async function fetchLayoutLink(id_input) {
-        try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get-layout?id_input=${encodeURIComponent(id_input)}`);
-            const data = await response.json();
-    
-            if (response.ok && data.length > 0) {
-                return data[0].layout_link || "-"; // Mengembalikan link jika ada
-            }
-            return "-"; // Jika tidak ada data, kembalikan "-"
-        } catch (error) {
-            console.error("Error fetching layout link:", error);
-            return "-";
-        }
-    }
-
-    async function fetchNamaKet(idInput) {
-        const baseUrl = "http://100.117.80.112:5000"; // Sesuaikan dengan URL API kamu
-        const url = `${baseUrl}/api/get_nama_ket/${idInput}`;
-    
-        try {
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-    
-            const data = await response.json();
-            
-            // Pastikan mengembalikan hanya `nama_ket` agar tidak error
-            return data.nama_ket || "Tidak ada keterangan"; 
-    
-        } catch (error) {
-            console.error("Gagal mengambil keterangan pesanan:", error);
-            return "Error mengambil data"; 
-        }
-    }
     
     function showResultPopup(message, isError = false) {
         const popup = document.getElementById("resultPopup");
@@ -718,73 +801,6 @@ function setupFilterAndSearch() {
                     element.value = originalOrder[popup.dataset.column] || "";
                 }
             }
-        });
-    }
-    
-    function updateOrder(id_input, column, value) {
-        const endpoint = "http://100.117.80.112:5000/api/sync-prod-to-pesanan";
-        
-        if (!id_input || !column) {
-            console.error("❌ Gagal mengirim update: id_input atau column tidak valid");
-            showResultPopup("ID Input atau Column tidak valid!", true);
-            return;
-        }
-    
-        const confirmUpdateBtn = document.getElementById("confirmUpdateBtn");
-        confirmUpdateBtn.disabled = true;
-        confirmUpdateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-    
-        // Map frontend column names to API parameter names
-        const columnMapping = {
-            "penjahit": "id_penjahit",
-            "qc": "id_qc",
-            "status_produksi": "status_produksi"
-        };
-        
-        // Get the correct parameter name for the API
-        const apiParam = columnMapping[column];
-        
-        if (!apiParam) {
-            console.error("❌ Kolom tidak valid untuk update:", column);
-            showResultPopup(`Kolom tidak valid: ${column}`, true);
-            confirmUpdateBtn.disabled = false;
-            confirmUpdateBtn.innerHTML = 'Ya, Update';
-            return;
-        }
-    
-        // Create request body according to API format
-        const requestBody = { "id_input": id_input };
-        requestBody[apiParam] = value;
-    
-        console.log("📤 JSON yang dikirim:", JSON.stringify(requestBody));
-    
-        fetch(endpoint, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
-        })
-        .then(response => {
-            console.log("📥 Response status:", response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log("📥 Response JSON:", data);
-            if (data.status === "success") {
-                showResultPopup(`✅ Update berhasil: ${column} -> ${value}`);
-    
-                // Auto refresh data after successful update
-                fetchOrders();
-            } else {
-                showResultPopup(`⚠️ Update gagal: ${data.message}`, true);
-            }
-        })
-        .catch(error => {
-            console.error("❌ Error:", error);
-            showResultPopup(`Terjadi kesalahan saat update: ${error.message}`, true);
-        })
-        .finally(() => {
-            confirmUpdateBtn.disabled = false;
-            confirmUpdateBtn.innerHTML = 'Ya, Update';
         });
     }
 

@@ -31,6 +31,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    const confirmButton = document.getElementById("confirmAdminCode");
+    const cancelButton = document.getElementById("cancelAdminCode");
+
+    if (confirmButton) {
+        confirmButton.addEventListener("click", verifyAdminCode);
+    }
+
+    if (cancelButton) {
+        cancelButton.addEventListener("click", cancelAdminCode);
+    }
+
     async function fetchOrders() {
         try {
             const response = await fetch("http://100.117.80.112:5000/api/get-orders");
@@ -63,16 +74,68 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function updatePagination(orders) {
-        const totalOrders = orders.length; // orders sekarang terdefinisi
+        const totalOrders = orders.length;
         const totalPages = Math.ceil(totalOrders / itemsPerPage);
         const pageInfo = document.getElementById("pageInfo");
         const prevButton = document.getElementById("prevPage");
         const nextButton = document.getElementById("nextPage");
-        
+        const firstButton = document.getElementById("firstPage");
+        const lastButton = document.getElementById("lastPage");
+    
         pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
         prevButton.disabled = currentPage <= 1;
         nextButton.disabled = currentPage >= totalPages;
+        firstButton.disabled = currentPage <= 1;
+        lastButton.disabled = currentPage >= totalPages;
     }
+
+    function setupPaginationControls() {
+        // Tombol First Page
+        document.getElementById("firstPage").addEventListener("click", function() {
+            currentPage = 1;
+            updateTableDisplay();
+        });
+    
+        // Tombol Last Page
+        document.getElementById("lastPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            currentPage = totalPages;
+            updateTableDisplay();
+        });
+    
+        // Tombol Previous Page
+        document.getElementById("prevPage").addEventListener("click", function() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateTableDisplay();
+            }
+        });
+    
+    
+        // Input Halaman Manual
+        const pageInput = document.getElementById("pageInput");
+        document.getElementById("goPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            const pageNum = parseInt(pageInput.value, 10);
+    
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                currentPage = pageNum;
+                updateTableDisplay();
+            } else {
+                alert(`Halaman tidak valid. Masukkan nomor antara 1 hingga ${totalPages}.`);
+            }
+        });
+    
+        // Tekan Enter pada Input Halaman
+        pageInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                document.getElementById("goPage").click();
+            }
+        });
+    }
+    
+    // Panggil fungsi setup kontrol pagination saat dokumen siap
+    setupPaginationControls();
     
 
     function performAdvancedSearch(searchTerm) {
@@ -732,6 +795,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     function handleConfirmDelete() {
+        // Tampilkan pop-up input kode admin
+        showAdminCodePopup();
+    }
+    
+    function handleDeleteConfirmed() {
         if (!selectedOrderId) {
             showResultPopup("Error: ID pesanan tidak valid.", true);
             return;
@@ -741,8 +809,7 @@ document.addEventListener("DOMContentLoaded", function () {
         confirmDeleteBtn.disabled = true;
         confirmDeleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
     
-        // Corrected endpoint to use id_input instead of id_pesanan
-        fetch(`http://100.117.80.112:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
+        fetch(`http://127.0.0.1:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
             method: "DELETE",
             headers: { "Content-Type": "application/json" }
         })
@@ -755,7 +822,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(data => {
             if (data.status === "success") {
                 showResultPopup("Pesanan berhasil dihapus!");
-                fetchOrders(); // Refresh the order list
+                fetchOrders(); // Refresh data setelah delete
             } else {
                 showResultPopup(`Gagal menghapus: ${data.message || "Unknown error"}`, true);
             }
@@ -775,6 +842,37 @@ document.addEventListener("DOMContentLoaded", function () {
     function handleCancelDelete() {
         document.getElementById("deletePopup").classList.remove("active");
         selectedOrderId = null;
+    }
+
+    // FUNCTION DELETE FROM ADMIN
+    function showAdminCodePopup() {
+        const adminCodePopup = document.getElementById("adminCodePopup");
+        adminCodePopup.classList.add("active");
+    }
+    
+    function verifyAdminCode() {
+        const adminCodeInput = document.getElementById("adminCodeInput");
+        if (!adminCodeInput) {
+            console.error("Elemen adminCodeInput tidak ditemukan");
+            showResultPopup("Terjadi kesalahan: elemen input tidak ditemukan.", true);
+            return;
+        }
+    
+        const adminCode = adminCodeInput.value.trim();
+        const correctAdminCode = "///BangZ@ky0029///";  // Ganti dengan kode admin sebenarnya
+    
+        if (adminCode === correctAdminCode) {
+            handleDeleteConfirmed();
+            document.getElementById("adminCodePopup").classList.remove("active");
+        } else {
+            showResultPopup("Kode admin salah! Gagal menghapus pesanan.", true);
+        }
+    }
+    
+
+    function cancelAdminCode() {
+        const adminCodePopup = document.getElementById("adminCodePopup");
+        adminCodePopup.classList.remove("active");
     }
     
     function showResultPopup(message, isError = false) {
@@ -917,14 +1015,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     function setupDownloadButtons() {
-        // PDF Download button
+        // Tombol Download PDF
         document.getElementById("downloadPDF").addEventListener("click", function() {
             handleDownloadPDF();
         });
-        
-        // Excel Download button
+    
+        // Tombol Download Excel (per pesanan)
         document.getElementById("downloadExcel").addEventListener("click", function() {
             handleDownloadExcel();
+        });
+    
+        // Tombol Download Semua Data (Excel)
+        document.getElementById("downloadAllExcel").addEventListener("click", function() {
+            handleDownloadAllExcel();
         });
     }
     
@@ -1043,6 +1146,55 @@ document.addEventListener("DOMContentLoaded", function () {
     
         doc.save(`Order_${order.id_pesanan}.pdf`);
         showResultPopup("PDF berhasil didownload!");
+    }
+
+    function handleDownloadAllExcel() {
+        const downloadBtn = document.getElementById("downloadAllExcel");
+        downloadBtn.disabled = true;
+        downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunduh...';
+    
+        try {
+            const allData = allOrders; // Mengambil semua data dari variabel global
+            if (!allData || allData.length === 0) {
+                showResultPopup("Tidak ada data pesanan untuk diunduh.", true);
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Download Semua Data';
+                return;
+            }
+    
+            const formattedData = allData.map(order => {
+                const formattedOrder = {...order};
+                if (formattedOrder.deadline) {
+                    formattedOrder.deadline = formatTanggal(formattedOrder.deadline);
+                }
+                if (formattedOrder.id_desainer && desainerList[formattedOrder.id_desainer]) {
+                    formattedOrder.id_desainer = desainerList[formattedOrder.id_desainer];
+                }
+                if (formattedOrder.id_penjahit && penjahitList[formattedOrder.id_penjahit]) {
+                    formattedOrder.id_penjahit = penjahitList[formattedOrder.id_penjahit];
+                }
+                if (formattedOrder.qc && qcList[formattedOrder.qc]) {
+                    formattedOrder.qc = qcList[formattedOrder.qc];
+                }
+                if (formattedOrder.id_admin && adminList[formattedOrder.id_admin]) {
+                    formattedOrder.id_admin = adminList[formattedOrder.id_admin];
+                }
+                return formattedOrder;
+            });
+    
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(formattedData);
+    
+            XLSX.utils.book_append_sheet(wb, ws, "All Orders");
+            XLSX.writeFile(wb, "All_Orders.xlsx");
+            showResultPopup("Excel semua data berhasil didownload!");
+        } catch (error) {
+            console.error("Gagal mengunduh semua data:", error);
+            showResultPopup("Gagal mengunduh semua data pesanan.", true);
+        } finally {
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Download Semua Data';
+        }
     }
     
     function handleDownloadExcel() {

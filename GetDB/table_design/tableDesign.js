@@ -158,6 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 (order.id_pesanan && order.id_pesanan.toLowerCase().includes(searchTermLower)) ||
                 (order.platform && order.platform.toLowerCase().includes(searchTermLower)) ||
                 (order.status_print && order.status_print.toLowerCase().includes(searchTermLower))
+                
             );
         });
     
@@ -211,7 +212,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (a[validField] > b[validField]) return direction === "asc" ? 1 : -1;
             return 0;
         });
-    
         renderOrdersTable(paginateOrders(sortedOrders));
         updatePagination();
     }

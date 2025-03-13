@@ -89,6 +89,9 @@ body, html {
 .sidebar-menu ul {
     list-style: none;
 }
+.sidebar-menu img{
+    margin: 10px;
+}
 
 .sidebar-menu li {
     display: flex;
