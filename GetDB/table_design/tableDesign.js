@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let kurirList = {};
     let penjahitList = {};
     let qcList = {};
+    let typeProdukList = {};
+    let produkList = {};
 
     // Initialize the page
     initApp();
@@ -176,12 +178,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const searchButton = document.getElementById("searchButton");
         
         searchButton.addEventListener("click", function() {
-            searchOrders(searchInput.value);
+            performAdvancedSearch(searchInput.value);
         });
         
         searchInput.addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
-                searchOrders(this.value);
+                performAdvancedSearch(this.value);
             }
         });
         
@@ -218,30 +220,36 @@ document.addEventListener("DOMContentLoaded", function () {
         
     }
 
-    function searchOrders(searchTerm) {
+    function performAdvancedSearch(searchTerm) {
         if (!searchTerm.trim()) {
-            renderOrdersTable(paginateOrders(allOrders));
-            updatePagination();
+            resetSearch(); // Reset tampilan jika input kosong
             return;
         }
     
-        const searchTermLower = searchTerm.toLowerCase();
+        const searchTermLower = searchTerm.toLowerCase().trim();
     
-        // Menggunakan filteredOrders yang dideklarasikan di luar
+        // Advanced search across multiple fields
         filteredOrders = allOrders.filter(order => {
-            return (
-                (order.id_input && order.id_input.toLowerCase().includes(searchTermLower)) ||
-                (order.id_pesanan && order.id_pesanan.toLowerCase().includes(searchTermLower)) ||
-                (order.platform && order.platform.toLowerCase().includes(searchTermLower)) ||
-                (order.status_print && order.status_print.toLowerCase().includes(searchTermLower))
+            // Search across all possible string fields
+            return Object.values(order).some(value => {
+                // Convert to string and check if it includes the search term
+                if (value === null || value === undefined) return false;
                 
-            );
+                const stringValue = String(value).toLowerCase();
+                return stringValue.includes(searchTermLower);
+            }) || 
+            // Check in reference lists
+            (adminList[order.id_admin] && adminList[order.id_admin].toLowerCase().includes(searchTermLower)) ||
+            (desainerList[order.id_desainer] && desainerList[order.id_desainer].toLowerCase().includes(searchTermLower)) ||
+            (typeProdukList[order.id_type] && typeProdukList[order.id_type].toLowerCase().includes(searchTermLower)) ||
+            (produkList[order.id_produk] && produkList[order.id_produk].toLowerCase().includes(searchTermLower));
         });
     
+        // Reset to first page after search
         currentPage = 1;
-        renderOrdersTable(paginateOrders(filteredOrders));
-        updatePagination();
+        updateTableDisplay(filteredOrders);
     
+        // Show search results
         showResultPopup(`Ditemukan ${filteredOrders.length} hasil pencarian.`);
     }
 
@@ -347,6 +355,8 @@ document.addEventListener("DOMContentLoaded", function () {
             row.innerHTML = `
                 <td>${formatTimes(order.timestamp) || "-"}</td>
                 <td>${order.id_input || "-"}</td>
+                <td>${typeProdukList[order.id_type] || "-"}</td>
+                <td>${produkList[order.id_produk] || "-"}</td>
                 <td style="color: ${getPlatformColor(order.platform).color}; background-color: ${getPlatformColor(order.platform).backgroundColor}; padding: 5px; border-radius: 5px;">
                     ${order.platform || "-"}
                 </td>
@@ -519,6 +529,12 @@ document.addEventListener("DOMContentLoaded", function () {
             if (data.table_qc) {
                 data.table_qc.forEach(q => qcList[q.ID] = q.nama);
             }
+            if (data.table_type_produk) {
+                data.table_type_produk.forEach(t => typeProdukList[t.id_type] = t.kategori);
+            }
+            if (data.table_produk) {
+                data.table_produk.forEach(pr => produkList[pr.id_produk] = pr.nama_produk);
+            }
     
             console.log("Reference data loaded successfully");
     
@@ -526,7 +542,7 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Gagal mengambil data referensi:", error);
             showResultPopup("Gagal memuat data referensi. Beberapa fitur mungkin tidak berfungsi dengan baik.", true);
         }
-    }
+    }   
 
     function addDescriptionEventListeners() {
         document.querySelectorAll(".desc-table").forEach(item => {

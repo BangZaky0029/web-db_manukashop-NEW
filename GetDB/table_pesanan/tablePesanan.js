@@ -11,6 +11,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let kurirList = {};
     let penjahitList = {};
     let qcList = {};
+    let typeProdukList = {};
+    let produkList = {};
+    let bahanList = {};
+
 
     // Initialize the page
     initApp();
@@ -30,7 +34,6 @@ document.addEventListener("DOMContentLoaded", function () {
             showResultPopup("Gagal memuat aplikasi. Silakan refresh halaman.", true);
         }
     }
-
     const confirmButton = document.getElementById("confirmAdminCode");
     const cancelButton = document.getElementById("cancelAdminCode");
 
@@ -67,6 +70,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    
+    
     function paginateOrders(orders) {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -106,11 +111,19 @@ document.addEventListener("DOMContentLoaded", function () {
         // Tombol Previous Page
         document.getElementById("prevPage").addEventListener("click", function() {
             if (currentPage > 1) {
-                currentPage--;
+                currentPage = Math.min(totalPages, currentPage - 1); // Menambah 1 halaman
                 updateTableDisplay();
             }
         });
     
+        // Tombol Next Page
+        document.getElementById("nextPage").addEventListener("click", function() {
+            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage = Math.min(totalPages, currentPage + 1); // Menambah 1 halaman
+                updateTableDisplay();
+            }
+        });
     
         // Input Halaman Manual
         const pageInput = document.getElementById("pageInput");
@@ -160,7 +173,9 @@ document.addEventListener("DOMContentLoaded", function () {
             (adminList[order.id_admin] && adminList[order.id_admin].toLowerCase().includes(searchTermLower)) ||
             (desainerList[order.id_desainer] && desainerList[order.id_desainer].toLowerCase().includes(searchTermLower)) ||
             (penjahitList[order.id_penjahit] && penjahitList[order.id_penjahit].toLowerCase().includes(searchTermLower)) ||
-            (qcList[order.id_qc] && qcList[order.id_qc].toLowerCase().includes(searchTermLower));
+            (qcList[order.id_qc] && qcList[order.id_qc].toLowerCase().includes(searchTermLower)) ||
+            (typeProdukList[order.id_type] && typeProdukList[order.id_type].toLowerCase().includes(searchTermLower)) ||
+            (produkList[order.id_produk] && produkList[order.id_produk].toLowerCase().includes(searchTermLower));
         });
 
         // Reset to first page after search
@@ -224,14 +239,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 updateTableDisplay();
             }
         });
-
-        document.getElementById("nextPage").addEventListener("click", function() {
-            const totalPages = Math.ceil((filteredOrders.length || allOrders.length) / itemsPerPage);
-            if (currentPage < totalPages) {
-                currentPage++;
-                updateTableDisplay();
-            }
-        });
     }
 
     function sortOrders(sortBy) {
@@ -289,46 +296,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    
-    
-    // ✅ Function untuk mencari berdasarkan `id_pesanan`
-    function searchOrders(searchQuery) {
-        if (!searchQuery.trim()) {
-            renderOrdersTable(allOrders); // Jika kosong, tampilkan semua data
-            return;
-        }
-    
-        const filteredOrders = allOrders.filter(order =>
-            order.id_pesanan.toString().includes(searchQuery) // Cari berdasarkan ID pesanan
-        );
-    
-        renderOrdersTable(filteredOrders); // Tampilkan hasil pencarian
-    }
-    
-
-    function searchOrders(searchTerm) {
-        if (!searchTerm.trim()) {
-            renderOrdersTable(paginateOrders(allOrders));
-            updatePagination();
-            return;
-        }
-    
-        const searchTermLower = searchTerm.toLowerCase();
-    
-        const filteredOrders = allOrders.filter(order =>
-            // Cari berdasarkan id_input atau id_pesanan
-            (order.id_input && order.id_input.toLowerCase().includes(searchTermLower)) ||
-            (order.id_pesanan && order.id_pesanan.toLowerCase().includes(searchTermLower)) ||
-            (order.platform && order.platform.toLowerCase().includes(searchTermLower))
-        );
-    
-        currentPage = 1;
-        renderOrdersTable(paginateOrders(filteredOrders));
-        updatePagination();
-    
-        showResultPopup(`Ditemukan ${filteredOrders.length} hasil pencarian.`);
-    }
-
     function filterOrdersByStatus(status) {
         if (!status) {
             // If no status selected, show all orders
@@ -381,23 +348,25 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     
-    function renderOrdersTable(orders) {
+    async function renderOrdersTable(orders) {
         const tableBody = document.getElementById("table-body");
         tableBody.innerHTML = "";
     
-        orders.forEach(order => {
+        for (const order of orders) {
             const row = document.createElement("tr");
-            
+    
             // Dapatkan warna teks dan background berdasarkan ID
             const adminColor = getColorByID(order.id_admin, 'admin');
             const desainerColor = getColorByID(order.id_desainer, 'desainer');
             const penjahitColor = getColorByID(order.id_penjahit, 'penjahit');
             const qcColor = getColorByID(order.id_qc, 'qc');
-            
+    
             row.innerHTML = `
                 <td>${formatTimes(order.timestamp) || "-"}</td>
                 <td>${order.id_input || "-"}</td>
                 <td>${order.id_pesanan || "-"}</td>
+                <td>${typeProdukList[order.id_type] || "-"}</td>
+                <td>${produkList[order.id_produk] || "-"}</td>
                 <td style="color: ${getPlatformColor(order.platform).color}; background-color: ${getPlatformColor(order.platform).backgroundColor}; padding: 5px; border-radius: 5px;">
                     ${order.platform || "-"}
                 </td>
@@ -415,7 +384,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 <td>${formatTimestamp(order.timestamp_qc) || "-"}</td>
                 <td><span class="badge_input ${getBadgeClass(order.status_print)}">${order.status_print || "-"}</span></td>
                 <td><span class="badge_input ${getBadgeClass(order.status_produksi)}">${order.status_produksi || "-"}</span></td>
-
                 <td>
                     <div style="display: flex; gap: 10px; justify-content: center;">
                         <button class="delete-icon" data-id="${order.id_input}"><i class="fas fa-trash-alt"></i></button>
@@ -424,12 +392,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 </td>
             `;
             tableBody.appendChild(row);
-        });
+        }
         addDeleteEventListeners();
         addUpdateEventListeners();
         addInputChangeEventListeners();
         addDescriptionEventListeners();
     }
+
+    
+        
 
     function highlightDeadline(dateString) {
         if (!dateString) return "-";
@@ -590,38 +561,47 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function fetchReferenceData() {
-        try {
-            const response = await fetch("http://100.117.80.112:5000/api/references");
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-    
-            if (data.table_admin) {
-                data.table_admin.forEach(a => adminList[a.ID] = a.nama);
-            }
-            if (data.table_desainer) {
-                data.table_desainer.forEach(d => desainerList[d.ID] = d.nama);
-            }
-            if (data.table_kurir) {
-                data.table_kurir.forEach(k => kurirList[k.ID] = k.nama);
-            }
-            if (data.table_penjahit) {
-                data.table_penjahit.forEach(p => penjahitList[p.ID] = p.nama);
-            }
-            if (data.table_qc) {
-                data.table_qc.forEach(q => qcList[q.ID] = q.nama);
-            }
-    
-            console.log("Reference data loaded successfully");
-    
-        } catch (error) {
-            console.error("Gagal mengambil data referensi:", error);
-            showResultPopup("Gagal memuat data referensi. Beberapa fitur mungkin tidak berfungsi dengan baik.", true);
+    try {
+        const response = await fetch("http://100.117.80.112:5000/api/references");
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        
+        const data = await response.json();
+
+        if (data.table_admin) {
+            data.table_admin.forEach(a => adminList[a.ID] = a.nama);
+        }
+        if (data.table_desainer) {
+            data.table_desainer.forEach(d => desainerList[d.ID] = d.nama);
+        }
+        if (data.table_kurir) {
+            data.table_kurir.forEach(k => kurirList[k.ID] = k.nama);
+        }
+        if (data.table_penjahit) {
+            data.table_penjahit.forEach(p => penjahitList[p.ID] = p.nama);
+        }
+        if (data.table_qc) {
+            data.table_qc.forEach(q => qcList[q.ID] = q.nama);
+        }
+        if (data.table_type_produk) {
+            data.table_type_produk.forEach(t => typeProdukList[t.id_type] = t.kategori);
+        }
+        if (data.table_produk) {
+            data.table_produk.forEach(pr => produkList[pr.id_produk] = pr.nama_produk);
+        }
+        if (data.table_bahan) {
+            data.table_bahan.forEach(b => bahanList[b.id_bahan] = b.bahan);
+        }
+
+        console.log("Reference data loaded successfully");
+
+    } catch (error) {
+        console.error("Gagal mengambil data referensi:", error);
+        showResultPopup("Gagal memuat data referensi. Beberapa fitur mungkin tidak berfungsi dengan baik.", true);
     }
+}
 
     function addDescriptionEventListeners() {
         document.querySelectorAll(".desc-table").forEach(item => {
@@ -711,16 +691,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 <tr><th>Status Produksi</th><td><span class="badge ${getBadgeClass(order.status_produksi)}">${order.status_produksi || "-"}</span></td></tr>
                 <tr><th>Layout Link</th><td>
                     ${order.layout_link ? `<a href="${order.layout_link}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-link"></i> Buka Link</a>` : "-"}
-                </td></tr>
+                    </td></tr>
                 <tr><th>Penjahit</th><td ${applyColor(order.id_penjahit, 'penjahit')}>${penjahitList[order.id_penjahit] || "-"}</td></tr>
                 <tr><th>QC</th><td ${applyColor(order.id_qc, 'qc')}>${qcList[order.id_qc] || "-"}</td></tr>
                 <tr><th>Link Foto</th><td>
                     ${linkFoto && linkFoto !== "-" 
                         ? `<a href="${linkFoto}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-image"></i> Lihat Foto</a>`
                         : "Tidak Tersedia"}
-                </td></tr>
-                <tr>
-                    <th>Detail Pesanan</th>
+                        </td></tr>
+                        <tr>           
+                <th>Detail Pesanan</th>
                     <td style="white-space: pre-line;">${detail || "-"}</td>
                 </tr>
             `;
@@ -809,7 +789,7 @@ document.addEventListener("DOMContentLoaded", function () {
         confirmDeleteBtn.disabled = true;
         confirmDeleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
     
-        fetch(`http://127.0.0.1:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
+        fetch(`http://100.117.80.112:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
             method: "DELETE",
             headers: { "Content-Type": "application/json" }
         })
@@ -839,6 +819,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
     
+    
     function handleCancelDelete() {
         document.getElementById("deletePopup").classList.remove("active");
         selectedOrderId = null;
@@ -859,7 +840,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     
         const adminCode = adminCodeInput.value.trim();
-        const correctAdminCode = "///BangZ@ky0029///";  // Ganti dengan kode admin sebenarnya
+        const correctAdminCode = "/BangZ@ky0029/";  // Ganti dengan kode admin sebenarnya
     
         if (adminCode === correctAdminCode) {
             handleDeleteConfirmed();
@@ -874,6 +855,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const adminCodePopup = document.getElementById("adminCodePopup");
         adminCodePopup.classList.remove("active");
     }
+
     
     function showResultPopup(message, isError = false) {
         const popup = document.getElementById("resultPopup");
@@ -896,6 +878,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function updateOrderWithConfirmation(id_input, column, value) {
         const confirmPopup = document.getElementById("confirmUpdatePopup");
         const confirmMessage = document.getElementById("confirmUpdateMessage");
+        
         
         // Get the display name for the column based on selected value
         let displayValue = value;
@@ -1031,6 +1014,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
     
+    
     function handleDownloadPDF() {
         if (!window.currentOrder) {
             showResultPopup("Tidak ada data pesanan untuk di-download.", true);
@@ -1119,7 +1103,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const orderedKeys = [
             "id_input", "id_pesanan", "timestamp", "id_admin", "deadline", "qty",
             "platform", "id_desainer", "status_print", "layout_link", "status_produksi",
-            "id_penjahit", "id_qc", "timestamp_designer", "timestamp_penjahit", "timestamp_qc"
+            "id_penjahit", "id_qc", "timestamp_designer", "timestamp_penjahit", "timestamp_qc",
+            "id_produk", "id_type"
         ];        
         
         orderedKeys.forEach(key => {
@@ -1196,6 +1181,7 @@ document.addEventListener("DOMContentLoaded", function () {
             downloadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Download Semua Data';
         }
     }
+    
     
     function handleDownloadExcel() {
         if (!window.currentOrder) {

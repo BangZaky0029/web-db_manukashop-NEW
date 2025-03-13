@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="inputOrder.css">
     <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=JRND0trVuPaa&format=png&color=000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=CCxiK5APZInu&format=png&color=000000">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -24,6 +23,41 @@
             <div class="form-group">
                 <label for="id_pesanan">ID Pesanan</label>
                 <input type="text" id="id_pesanan" name="id_pesanan" placeholder="Masukkan ID pesanan" required>
+            </div>
+
+            <!-- Type Selection -->
+            <div class="form-group">
+                <label>Tipe Produk</label>
+                <div class="radio-container type-container">
+                    <div class="radio-item">
+                        <input type="radio" id="typeRS" name="type" value="45001" required>
+                        <label for="typeRS">RS</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="typeNonRS" name="type" value="45002">
+                        <label for="typeNonRS">Non-RS</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Material Buttons -->
+            <div class="material-section">
+                <label>Pilih Bahan</label>
+                <div class="material-buttons">
+                    <button type="button" class="material-btn" data-material="46001" data-name="Kanvas">Kanvas</button>
+                    <button type="button" class="material-btn" data-material="46002" data-name="Kulit">Kulit</button>
+                    <button type="button" class="material-btn" data-material="46003" data-name="Nilon">Nilon</button>
+                    <button type="button" class="material-btn" data-material="46004" data-name="Marsoto">Marsoto</button>
+                </div>
+            </div>
+            
+            
+            <!-- Product selection (initially hidden, will be populated via JS) -->
+            <div class="form-group product-selection" id="productSelectionGroup" style="display: none;">
+                <label for="id_produk">Pilih Produk</label>
+                <select id="id_produk" name="id_produk" required>
+                    <option value="">-- Pilih Produk --</option>
+                </select>
             </div>
     
             <div class="form-group">
@@ -70,7 +104,7 @@
             <div class="form-group">
                 <label for="nama_ket">Keterangan Orderan</label>
                 <textarea id="nama_ket" name="nama_ket" placeholder="Masukkan keterangan pesanan detail" rows="4">
- Nama                  : 
+ Produk                 : 
  Type                    : 
  Motif/Kode         : 
  Keterangan       : 
@@ -99,6 +133,15 @@
         </form>
     
         <div id="responseMessage"></div>
+    </div>
+    
+    <!-- Modal for Products -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3 id="modalTitle">Produk</h3>
+            <div id="productList" class="product-list"></div>
+        </div>
     </div>
     
     <script src="inputOrder.js"></script>
