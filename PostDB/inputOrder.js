@@ -77,11 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const productSelectionGroup = document.getElementById('productSelectionGroup');
     const productSelect = document.getElementById('id_produk');
     const typeRadios = document.querySelectorAll('input[name="type"]');
-    const platformRadios = document.querySelectorAll('input[name="platform"]'); // Added this line
+    const platformRadios = document.querySelectorAll('input[name="platform"]');
     
     let selectedMaterial = null;
     let selectedProductId = null;
     let selectedType = null;
+    let selectedFile = null; // For storing the image file to upload
 
     // Setup Material Buttons
     materialButtons.forEach(button => {
@@ -214,15 +215,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (item.type.indexOf('image') !== -1) {
                 const file = item.getAsFile();
                 if (file) {
+                    selectedFile = file;
+                    
                     // Create a blob URL for the pasted image
                     const imageUrl = URL.createObjectURL(file);
                     
                     // Update the preview image
                     previewImage.src = imageUrl;
                     previewImage.style.display = 'block';
-                    
-                    // Handle the image file
-                    handleImageUpload(file);
                     
                     // Prevent default paste behavior 
                     event.preventDefault();
@@ -237,29 +237,27 @@ document.addEventListener('DOMContentLoaded', function() {
         imageUpload.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file && previewImage) {
-                // Create a blob URL for the selected file
-                const imageUrl = URL.createObjectURL(file);
+                selectedFile = file;
                 
                 // Update the preview image
+                const imageUrl = URL.createObjectURL(file);
                 previewImage.src = imageUrl;
                 previewImage.style.display = 'block';
-                
-                // Handle the image file
-                handleImageUpload(file);
             }
         });
     }
 
-    // Function to handle the image (works for both uploaded and pasted images)
-    function handleImageUpload(file) {
-        // You can implement image upload to server here
-        // For now, we'll just display the image
-        console.log('Image file:', file);
-        
-        // If you want to clear the file input
-        if (imageUpload) {
-            imageUpload.value = '';
-        }
+    // Handle perubahan pada input link secara manual
+    if (linkInput) {
+        linkInput.addEventListener('input', function() {
+            const linkValue = linkInput.value;
+            // Kosongkan preview jika link diubah manual
+            if (linkValue && !linkValue.startsWith('blob:')) {
+                previewImage.style.display = 'none';
+                previewImage.src = '';
+                selectedFile = null;
+            }
+        });
     }
 
     // Inisialisasi nilai default untuk nama_ket jika kosong
@@ -280,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get the selected platform value
             const platformRadio = document.querySelector('input[name="platform"]:checked');
             const platformValue = platformRadio ? platformRadio.value : '';
-            
+
             // Validate form - check product, type and platform
             if (!selectedProductId || !selectedType) {
                 if (responseMessage) {
@@ -312,97 +310,138 @@ document.addEventListener('DOMContentLoaded', function() {
             const qtyInput = document.getElementById('qty')?.value || '0';
             const qty = parseInt(qtyInput);
             const deadline = document.getElementById('deadline')?.value || '';
-            const namaKetValue = document.getElementById('nama_ket')?.value || '';
-            const link = document.getElementById('link')?.value || '';
+            const namaKetValue = namaKet?.value || '';
+            const link = linkInput?.value || '';
             
-            // Create JSON data object
-            const formData = {
-                id_pesanan: idPesanan,
-                id_admin: currentAdminId,
-                Platform: platformValue,  // Use the selected platform value
-                qty: qty,
-                Deadline: deadline,
-                id_produk: parseInt(selectedProductId),
-                id_type: parseInt(selectedType),
-                nama_ket: namaKetValue,
-                link: link
-            };
-            
-            console.log("Sending data:", formData);
-            
-            // Send the data to the API as JSON
-            fetch('http://100.117.80.112:5000/api/input-order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        try {
-                            const errorData = JSON.parse(text);
-                            throw new Error(`Server error: ${errorData.message || text}`);
-                        } catch (e) {
-                            throw new Error(`HTTP error! Status: ${response.status}, Body: ${text || 'No response body'}`);
-                        }
-                    });
+            // Prepare data for submission
+            // If we have a file, use FormData, otherwise use JSON
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('id_pesanan', idPesanan);
+                formData.append('id_admin', currentAdminId);
+                formData.append('Platform', platformValue);
+                formData.append('qty', qty);
+                formData.append('Deadline', deadline);
+                formData.append('id_produk', selectedProductId);
+                formData.append('id_type', selectedType);
+                formData.append('nama_ket', namaKetValue);
+                formData.append('photo', selectedFile);
+                
+                // If link is provided manually, include it
+                if (link && !link.startsWith('blob:')) {
+                    formData.append('link', link);
                 }
-                return response.json();
-            })
-            .then(data => {
-                if (responseMessage) {
-                    if (data.status === 'success') {
-                        responseMessage.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                        // Reset form on success
-                        orderForm.reset();
-                        selectedProductId = null;
-                        selectedType = null;
-                        selectedMaterial = null;
-                        
-                        // Reset UI elements
-                        materialButtons.forEach(btn => btn.classList.remove('active'));
-                        typeRadios.forEach(radio => radio.checked = false);
-                        platformRadios.forEach(radio => radio.checked = false);
-                        
-                        if (productSelect) {
-                            productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
-                        }
-                        
-                        if (productSelectionGroup) {
-                            productSelectionGroup.style.display = 'none';
-                        }
-                        
-                        if (previewImage) {
-                            previewImage.style.display = 'none';
-                        }
-                        
-                        // Reset keterangan
-                        if (namaKet) {
-                            namaKet.value = ` Nama                  : \n Type                    : \n Motif/Kode         : \n Keterangan       : \n Note : DESAIN KIRIM ADMIN DULU`;
-                        }
-                    } else {
-                        responseMessage.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                
+                // Send data with FormData (multipart/form-data)
+                fetch('http://100.117.80.112:5000/api/input-order', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(handleResponse)
+                .then(handleSuccess)
+                .catch(handleError)
+                .finally(() => {
+                    if (submitBtn) {
+                        submitBtn.disabled = false; // Re-enable button
                     }
-                    responseMessage.style.display = 'block';
-                    
-                    // Scroll to message
-                    responseMessage.scrollIntoView({ behavior: 'smooth' });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                if (responseMessage) {
-                    responseMessage.innerHTML = `<div class="alert alert-danger">Terjadi kesalahan saat mengirim data: ${error.message}</div>`;
-                    responseMessage.style.display = 'block';
-                }
-            })
-            .finally(() => {
-                if (submitBtn) {
-                    submitBtn.disabled = false; // Re-enable button
+                });
+            } else {
+                // Create JSON data object when no file is present
+                const jsonData = {
+                    id_pesanan: idPesanan,
+                    id_admin: currentAdminId,
+                    Platform: platformValue,
+                    qty: qty,
+                    Deadline: deadline,
+                    id_produk: parseInt(selectedProductId),
+                    id_type: parseInt(selectedType),
+                    nama_ket: namaKetValue,
+                    link: link
+                };
+                
+                // Send data with JSON
+                fetch('http://100.117.80.112:5000/api/input-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(jsonData)
+                })
+                .then(handleResponse)
+                .then(handleSuccess)
+                .catch(handleError)
+                .finally(() => {
+                    if (submitBtn) {
+                        submitBtn.disabled = false; // Re-enable button
+                    }
+                });
+            }
+        });
+    }
+    
+    // Helper functions for fetch responses
+    function handleResponse(response) {
+        if (!response.ok) {
+            return response.text().then(text => {
+                try {
+                    const errorData = JSON.parse(text);
+                    throw new Error(`Server error: ${errorData.message || text}`);
+                } catch (e) {
+                    throw new Error(`HTTP error! Status: ${response.status}, Body: ${text || 'No response body'}`);
                 }
             });
-        });
+        }
+        return response.json();
+    }
+    
+    function handleSuccess(data) {
+        if (responseMessage) {
+            if (data.status === 'success') {
+                responseMessage.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                // Reset form on success
+                orderForm.reset();
+                selectedProductId = null;
+                selectedType = null;
+                selectedMaterial = null;
+                selectedFile = null;
+                
+                // Reset UI elements
+                materialButtons.forEach(btn => btn.classList.remove('active'));
+                typeRadios.forEach(radio => radio.checked = false);
+                platformRadios.forEach(radio => radio.checked = false);
+                
+                if (productSelect) {
+                    productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
+                }
+                
+                if (productSelectionGroup) {
+                    productSelectionGroup.style.display = 'none';
+                }
+                
+                if (previewImage) {
+                    previewImage.style.display = 'none';
+                    previewImage.src = '';
+                }
+                
+                // Reset keterangan
+                if (namaKet) {
+                    namaKet.value = ` Nama                  : \n Type                    : \n Motif/Kode         : \n Keterangan       : \n Note : DESAIN KIRIM ADMIN DULU`;
+                }
+            } else {
+                responseMessage.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+            }
+            responseMessage.style.display = 'block';
+            
+            // Scroll to message
+            responseMessage.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+    
+    function handleError(error) {
+        console.error('Error:', error);
+        if (responseMessage) {
+            responseMessage.innerHTML = `<div class="alert alert-danger">Terjadi kesalahan saat mengirim data: ${error.message}</div>`;
+            responseMessage.style.display = 'block';
+        }
     }
 });

@@ -680,6 +680,7 @@ document.addEventListener("DOMContentLoaded", function () {
             
     
             modalBody.innerHTML = `
+                <tr><th>ID Input</th><td>${order.id_input || "-"}</td></tr>
                 <tr><th>ID Pesanan</th><td>${order.id_pesanan || "-"}</td></tr>
                 <tr><th>Admin</th><td ${applyColor(order.id_admin, 'admin')}>${adminList[order.id_admin] || "-"}</td></tr>
                 <tr><th>Timestamp</th><td>${order.timestamp || "-"}</td></tr>
