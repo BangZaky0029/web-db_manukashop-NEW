@@ -6,7 +6,7 @@
     <title>Monitoring Designer</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=JRND0trVuPaa&format=png&color=000000">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=16377&format=png&color=000000">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="tableDesign.css">
 </head>
@@ -18,13 +18,14 @@
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Cari ID Pesanan...">
                 <button id="searchButton"><i class="fas fa-search"></i></button>
-                <a href="/WEB-SERVER/GetDB/table_produksi/tableUrgent.html" 
-                    class="btn-deadline">
-                        CEK DEADLINE HARI INI
-                </a>
+                <p>check desain hari ini, 2 hari yang lalu, dan 5 hari kedepan!!</p>
             </div>
             
             <div class="search-container">
+
+                <label for="tanggal">Sortir Deadline :</label>
+                <input type="date" id="tanggal" name="tanggal">
+
                 
                 <select id="filterStatus">
                     <option value="">Semua Status</option>
@@ -54,8 +55,9 @@
             <table>
                 <thead>
                     <tr>
-                        <th><i class="fas fa-clock"></i> Timestamp</th>
+                        <th><i class="fas fa-clock"></i> Pengambilan Design</th>
                         <th><i class="fas fa-id-card"></i> ID Input</th>
+                        <th><i class="fas fa-id-card"></i> ID Pesanan</th>
                         <th><i class="fas fa-hashtag"></i> Category</th>
                         <th><i class="fas fa-hashtag"></i> Produk</th>
                         <th><i class="fas fa-shopping-cart"></i> PLT</th>

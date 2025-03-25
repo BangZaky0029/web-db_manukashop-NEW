@@ -1,16 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
-    let selectedOrderId = null;
     let currentPage = 1;
-    let itemsPerPage = 10;
+    let itemsPerPage = 1000;
     let allOrders = [];
     let filteredOrders = []; // Data hasil filter
 
     // Define reference data objects
     let adminList = {};
     let desainerList = {};
-    let kurirList = {};
     let penjahitList = {};
     let qcList = {};
+    let typeProdukList = {};
+    let produkList = {};
 
     // Create loading overlay function
     function showLoadingOverlay() {
@@ -101,8 +101,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     
     async function fetchReferenceData() {
-        await simulateSlowLoading(); // Simulate potential slow network
-    
         try {
             const response = await fetch("http://100.117.80.112:5000/api/references");
             
@@ -112,20 +110,11 @@ document.addEventListener("DOMContentLoaded", function () {
             
             const data = await response.json();
     
-            if (data.table_admin) {
-                data.table_admin.forEach(a => adminList[a.ID] = a.nama);
+            if (data.table_type_produk) {
+                data.table_type_produk.forEach(t => typeProdukList[t.id_type] = t.kategori);
             }
-            if (data.table_desainer) {
-                data.table_desainer.forEach(d => desainerList[d.ID] = d.nama);
-            }
-            if (data.table_kurir) {
-                data.table_kurir.forEach(k => kurirList[k.ID] = k.nama);
-            }
-            if (data.table_penjahit) {
-                data.table_penjahit.forEach(p => penjahitList[p.ID] = p.nama);
-            }
-            if (data.table_qc) {
-                data.table_qc.forEach(q => qcList[q.ID] = q.nama);
+            if (data.table_produk) {
+                data.table_produk.forEach(pr => produkList[pr.id_produk] = pr.nama_produk);
             }
     
             console.log("Reference data loaded successfully");
@@ -408,35 +397,41 @@ document.addEventListener("DOMContentLoaded", function () {
     setupPaginationControls();
     // Updated performAdvancedSearch function with proper checks for null/undefined in references:
 
+    
     function performAdvancedSearch(searchTerm) {
         if (!searchTerm.trim()) {
             resetSearch();
             return;
         }
 
-    const searchTermLower = searchTerm.toLowerCase().trim();
+        const searchTermLower = searchTerm.toLowerCase().trim();
 
-    filteredOrders = allOrders.filter(order => {
-        return Object.values(order).some(value => {
-            if (value === null || value === undefined) return false;
-            const stringValue = String(value).toLowerCase();
-            return stringValue.includes(searchTermLower);
-        }) ||
-        (adminList[order.id_admin] && adminList[order.id_admin].toLowerCase().includes(searchTermLower)) ||
-        (desainerList[order.id_desainer] && desainerList[order.id_desainer].toLowerCase().includes(searchTermLower)) ||
-        (penjahitList[order.id_penjahit] && penjahitList[order.id_penjahit].toLowerCase().includes(searchTermLower)) ||
-        (qcList[order.id_qc] && qcList[order.id_qc].toLowerCase().includes(searchTermLower));
-    });
+        // Advanced search across multiple fields
+        filteredOrders = allOrders.filter(order => {
+            // Search across all possible string fields
+            return Object.values(order).some(value => {
+                // Convert to string and check if it includes the search term
+                if (value === null || value === undefined) return false;
+                
+                const stringValue = String(value).toLowerCase();
+                return stringValue.includes(searchTermLower);
+            }) || 
+            // Check in reference lists
+            (adminList[order.id_admin] && adminList[order.id_admin].toLowerCase().includes(searchTermLower)) ||
+            (desainerList[order.id_desainer] && desainerList[order.id_desainer].toLowerCase().includes(searchTermLower)) ||
+            (penjahitList[order.id_penjahit] && penjahitList[order.id_penjahit].toLowerCase().includes(searchTermLower)) ||
+            (qcList[order.id_qc] && qcList[order.id_qc].toLowerCase().includes(searchTermLower)) ||
+            (typeProdukList[order.id_type] && typeProdukList[order.id_type].toLowerCase().includes(searchTermLower)) ||
+            (produkList[order.id_produk] && produkList[order.id_produk].toLowerCase().includes(searchTermLower));
+        });
 
-    currentPage = 1;
-    updateTableDisplay();
+        // Reset to first page after search
+        currentPage = 1;
+        updateTableDisplay();
 
-    if (filteredOrders.length === 0) {
-        showResultPopup("Tidak ada hasil ditemukan.");
-    } else {
+        // Show search results
         showResultPopup(`Ditemukan ${filteredOrders.length} hasil pencarian.`);
     }
-}
 
 
     function updateTableDisplay() {
@@ -541,6 +536,8 @@ document.addEventListener("DOMContentLoaded", function () {
             row.innerHTML = `
                 <td>${order.id_input || "-"}</td>
                 <td>${order.id_pesanan || "-"}</td>
+                <td>${typeProdukList[order.id_type] || "-"}</td>
+                <td>${produkList[order.id_produk] || "-"}</td>
                 <td style="color: ${getPlatformColor(order.platform).color}; background-color: ${getPlatformColor(order.platform).backgroundColor}; padding: 5px; border-radius: 5px;">
                     ${order.platform || "-"}
                 </td>

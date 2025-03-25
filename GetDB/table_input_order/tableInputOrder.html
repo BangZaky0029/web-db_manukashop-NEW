@@ -2,10 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Data Pesanan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=123740&format=png&color=000000">
     <link rel="stylesheet" href="tableInputOrder.css">
 </head>
 <body>
@@ -36,23 +35,26 @@
             <button id="refreshBtn" title="Refresh Data"><i class="fas fa-sync-alt"></i></button>
         </div>
 
-        <table id="ordersTable">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>ID Input</th>
-                    <th>ID Pesanan</th>
-                    <th>Admin</th>
-                    <th>Platform</th>
-                    <th>Qty</th>
-                    <th>Nama Ket</th>
-                    <th>Deadline</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Data will be populated by JavaScript -->
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table id="ordersTable">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>ID Input</th>
+                        <th>ID Pesanan</th>
+                        <th>Admin</th>
+                        <th>Platform</th>
+                        <th>Qty</th>
+                        <th>Foto</th>
+                        <th>Nama Ket</th>
+                        <th>Deadline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
 
         <div class="pagination">
             <button id="prevPage" aria-label="Previous Page">&lt;</button>

@@ -73,9 +73,16 @@ document.addEventListener("DOMContentLoaded", function () {
     
     
     function paginateOrders(orders) {
+        // Sort orders by id_input in descending order
+        const sortedOrders = [...orders].sort((a, b) => {
+            const idA = parseInt(a.id_input?.replace(/\D/g, '') || 0);
+            const idB = parseInt(b.id_input?.replace(/\D/g, '') || 0);
+            return idB - idA;  // Descending order (highest to lowest)
+        });
+
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        return orders.slice(startIndex, endIndex);
+        return sortedOrders.slice(startIndex, endIndex);
     }
 
     function updatePagination(orders) {
@@ -683,7 +690,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <tr><th>ID Input</th><td>${order.id_input || "-"}</td></tr>
                 <tr><th>ID Pesanan</th><td>${order.id_pesanan || "-"}</td></tr>
                 <tr><th>Admin</th><td ${applyColor(order.id_admin, 'admin')}>${adminList[order.id_admin] || "-"}</td></tr>
-                <tr><th>Timestamp</th><td>${order.timestamp || "-"}</td></tr>
+                <tr><th>Timestamp</th><td>${formatTimes(order.timestamp) || "-"}</td></tr>
                 <tr><th>Deadline</th><td>${formatTanggal(order.deadline) || "-"}</td></tr>
                 <tr><th>Quantity</th><td>${order.qty || "-"}</td></tr>
                 <tr><th>Platform</th><td>${order.platform || "-"}</td></tr>

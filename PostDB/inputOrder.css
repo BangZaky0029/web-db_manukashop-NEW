@@ -51,6 +51,7 @@ h2:after {
     border-radius: 8px;
     padding: 12px;
     background-color: #f9f9f9;
+    height: 90px;
 }
 
 /* Style input di dalamnya */
@@ -321,6 +322,9 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-left: 0;   /* Hilangkan margin kiri */
     display: block;
     width: 100%;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 16px; /* Atur ukuran font biar lebih rapi */
+    height: 220px;
 }
 
 /* New styles for file upload input */

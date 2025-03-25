@@ -100,17 +100,21 @@ h1 i {
 }
 
 #refreshButton {
-    background: #6c63ff;
+    background: linear-gradient(135deg, #6c63ff, #4834d4);
     color: white;
     border: none;
-    width: 40px;
-    height: 40px;
+    width: 130px;
+    height: 45px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    font-size: 1.2em;
+    position: relative;
+    overflow: hidden;
 }
 
 #refreshButton:hover {
@@ -242,6 +246,11 @@ select:focus, input[type="text"]:focus {
     align-items: center;
     margin-top: 20px;
     gap: 15px;
+}
+
+#pageInput{
+    border-radius: 15px;
+    padding: 5px 10px;
 }
 
 .pagination-btn {
@@ -518,3 +527,122 @@ select:focus, input[type="text"]:focus {
         background-color: #ff2929;
     }
     
+
+    .btn-deadline {
+        display: inline-block;
+        background-color: #ff0000;
+        color: rgb(255, 255, 255);
+        font-size: 16px;
+        font-weight: bold;
+        padding: 10px 20px;
+        border-radius: 25px;
+        text-decoration: none;
+        transition: background-color 0.3s ease;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        margin-left: 20px;
+    }
+    
+    .btn-deadline:hover {
+        background-color: #ff2929;
+    }
+    
+
+    .page-input {
+        width: 80px;
+        margin: 0 5px;
+        text-align: center;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        outline: none;
+    }
+
+
+    input[type="date"], select {
+        width: 100%;
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        font-size: 1em;
+        background-color: #f4f4f4;
+        color: #333;
+        transition: all 0.3s ease;
+        margin: 0 8px;
+        outline: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        font-family: 'Arial', sans-serif;
+    }
+    
+    input[type="date"]:hover, select:hover {
+        background-color: #eaeaea;
+    }
+    
+    input[type="date"]:focus, select:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+        background-color: #fff;
+    }
+    
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        filter: invert(50%) sepia(100%) saturate(500%) hue-rotate(180deg);
+    }
+
+    .image-thumbnail {
+        width: 200px;  /* Maximum width */
+        max-height: 300px;  /* Maximum height */
+        min-height: 100px;  /* Minimum height */
+        overflow: hidden;
+        cursor: pointer;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin: 4px 0;
+        display: inline-block;
+        position: relative;
+    }
+    
+    .image-thumbnail img {
+        width: 100%;
+        height: auto;  /* Let height adjust automatically */
+        max-height: 300px;  /* Maximum height constraint */
+        object-fit: contain;  /* Maintain aspect ratio without cropping */
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        vertical-align: middle;
+    }
+    
+    .image-thumbnail img:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .done-status-row {
+        background-color: #f8f9fa;
+        border-left: 3px solid #28a745;
+    }
+
+
+    /* Warna untuk badge_input */
+.badge_input {
+    width: 100%;
+    padding: 5px;
+    border-radius: 5px;
+    border: none;
+    margin: 10px auto; /* Tengahin secara horizontal */
+    display: block; /* Biar gak ikut inline */
+    text-align: center; /* Tengahin teks dalam input */
+    font-weight: bold;
+}
+
+/* Warna tiap status */
+.option-default { background-color: transparent; color: rgb(0, 0, 0); } /* Abu-abu */
+.option-EDITING { background-color: #4169E1; color: white; } /* Biru royal */
+.option-PRINT-VENDOR { background-color: #FF6347; color: white; } /* Tomato */
+.option-PROSES-PRINT { background-color: #FFD700; color: black; } /* Kuning */
+.option-SELESAI-PRINT { background-color: #800080; color: white; } /* Ungu */
+.option-SEDANG-DI-PRESS { background-color: #1E90FF; color: white; } /* Biru muda */
+.option-SEDANG-DI-JAHIT { background-color: #32CD32; color: white; } /* Hijau */
+.option-TAS-SUDAH-DI-JAHIT { background-color: #228B22; color: white; } /* Hijau gelap */
+.option-REJECT-PRINT-ULANG { background-color: #FF0000; color: white; } /* Merah */
+.option-TAS-BLM-ADA { background-color: #8B008B; color: white; } /* Ungu tua */
+.option-DONE { background-color: #008000; color: white; } /* Hijau */

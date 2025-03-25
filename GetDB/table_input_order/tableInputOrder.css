@@ -25,7 +25,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 10px;
     background-attachment: fixed;
 }
 
@@ -33,7 +33,7 @@ body {
     width: 100%;
     max-width: 1500px;
     background: var(--text-light);
-    padding: 35px;
+    padding: 20px;
     border-radius: 15px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
     animation: slide-up 0.6s ease;
@@ -54,42 +54,43 @@ body {
 
 h2 {
     color: var(--primary-color);
-    font-size: 26px;
-    margin-bottom: 30px;
+    font-size: 24px;
+    margin-bottom: 20px;
     text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
     font-weight: 700;
 }
 
 .search-filter {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 30px;
+    gap: 10px;
+    margin-bottom: 20px;
     justify-content: space-between;
     align-items: center;
     background: #f4f6f7;
-    padding: 20px;
+    padding: 15px;
     border-radius: 10px;
 }
 
 .search-wrapper {
     display: flex;
     align-items: center;
-    flex-grow: 1;
+    flex: 1 1 250px;
+    min-width: 0;
     position: relative;
 }
 
 .search-filter input, 
 .search-filter select {
-    flex-grow: 1;
-    padding: 12px 15px;
+    width: 100%;
+    padding: 10px 12px;
     border: 2px solid #e0e6e9;
     border-radius: 8px;
-    font-size: 15px;
+    font-size: 14px;
     background: white;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
@@ -106,9 +107,10 @@ h2 {
     color: var(--text-light);
     border: none;
     border-radius: 8px;
-    width: 50px;
-    height: 50px;
-    margin-left: 10px;
+    width: 40px;
+    height: 40px;
+    margin-left: 5px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -117,10 +119,24 @@ h2 {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+#refreshBtn {
+    flex: 0 0 auto;
+}
+
 .search-filter button:hover {
     background: var(--secondary-color);
     transform: translateY(-2px);
     box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Table structure and responsive design */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
 }
 
 table {
@@ -128,20 +144,26 @@ table {
     border-collapse: separate;
     border-spacing: 0;
     background: var(--text-light);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    border-radius: 12px;
-    overflow: hidden;
+    min-width: 750px;
 }
 
 thead {
     background: var(--primary-color);
     color: var(--text-light);
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 th, td {
-    padding: 15px;
+    padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid #f1f1f1;
+    white-space: nowrap;
+}
+
+th {
+    font-weight: 600;
 }
 
 tbody tr {
@@ -152,20 +174,67 @@ tbody tr:hover {
     background-color: var(--hover-color);
 }
 
+/* Column visibility management */
+.column-id-input, 
+.column-id-pesanan {
+    display: table-cell; /* Always show these columns for consistency */
+}
+
+/* Platform styling */
+.platform-shopee { color: #ee4d2d; font-weight: 600; }
+.platform-whatsapp { color: #25D366; font-weight: 600; }
+.platform-tiktok { color: #000; font-weight: 600; }
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    /* Maintain all columns but adjust sizes */
+    th, td {
+        padding: 10px 8px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 768px) {
+    th, td {
+        padding: 8px 6px;
+        font-size: 13px;
+    }
+    
+    /* Optional: Truncate long text with ellipsis */
+    .nama-ket-cell {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+@media (max-width: 480px) {
+    th, td {
+        padding: 6px 4px;
+        font-size: 12px;
+    }
+    
+    .nama-ket-cell {
+        max-width: 100px;
+    }
+}
+
+
 .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
     margin-top: 20px;
     gap: 15px;
+    flex-wrap: wrap;
 }
 
 .pagination button {
     background: #e0e0e0;
     color: var(--primary-color);
     border: none;
-    width: 45px;
-    height: 45px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     cursor: pointer;
     transition: background 0.3s, transform 0.2s;
@@ -186,35 +255,10 @@ tbody tr:hover {
     cursor: not-allowed;
 }
 
-a {
-    color: var(--primary-color);
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-a:hover {
-    text-decoration: underline;
-    color: var(--secondary-color);
-}
-
 /* Platform styling */
 .platform-shopee { color: #ee4d2d; font-weight: 600; }
 .platform-whatsapp { color: #25D366; font-weight: 600; }
 .platform-tiktok { color: #000; font-weight: 600; }
-
-
-.close-popup {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 30px;
-    cursor: pointer;
-    color: var(--primary-color);
-}
-
-.close-popup:hover {
-    color: var(--secondary-color);
-}
 
 /* Highlight styling */
 .highlight {
@@ -307,8 +351,76 @@ a:hover {
     display: none;
 }
 
-/* Responsive Adjustments */
+/* Responsive styles */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+        border-radius: 10px;
+    }
+    
+    h2 {
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .search-filter {
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .search-wrapper {
+        flex: 1 1 100%;
+    }
+    
+    #platformFilter, #refreshBtn {
+        flex: 1 1 auto;
+    }
+    
+    th, td {
+        padding: 10px;
+        font-size: 14px;
+    }
+}
+
 @media (max-width: 480px) {
+    body {
+        padding: 5px;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    .search-filter {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-wrapper, #platformFilter, #refreshBtn {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    .search-filter button {
+        width: 38px;
+        height: 38px;
+    }
+    
+    #refreshBtn {
+        margin-top: 5px;
+        width: 100%;
+        height: 38px;
+    }
+    
+    .pagination {
+        gap: 8px;
+    }
+    
+    .pagination button {
+        width: 36px;
+        height: 36px;
+    }
+    
     .search-results-popup {
         top: 10px;
         width: calc(100% - 20px);
@@ -319,4 +431,58 @@ a:hover {
         border-radius: 8px;
         padding: 12px;
     }
+}
+
+
+.image-thumbnail {
+    width: 200px;  /* Maximum width */
+    max-height: 300px;  /* Maximum height */
+    min-height: 100px;  /* Minimum height */
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 4px 0;
+    display: inline-block;
+    position: relative;
+}
+
+.image-thumbnail img {
+    width: 100%;
+    height: auto;  /* Let height adjust automatically */
+    max-height: 300px;  /* Maximum height constraint */
+    object-fit: contain;  /* Maintain aspect ratio without cropping */
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    vertical-align: middle;
+}
+
+.image-thumbnail img:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.show-image-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    border: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.show-image-btn:hover {
+    transform: scale(1.1);
+    background-color: var(--secondary-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.show-image-btn i {
+    font-size: 1.2rem;
 }

@@ -1,9 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
     let selectedOrderId = null;
+    let showDoneOrders = false;
     let currentPage = 1;
     let itemsPerPage = 10;
     let allOrders = [];
     let filteredOrders = []; // Data hasil filter
+    let typeProdukList = [];
+    let produkList = {};
     
     // Define reference data objects
     let adminList = {};
@@ -33,12 +36,38 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Setup auto refresh function
+    // Setup auto refresh function to run at 9:00 AM daily
     function setupAutoRefresh() {
-        // Refresh data every 30 seconds (30000 milliseconds)
-        const refreshInterval = 30000;
-        setInterval(fetchOrders, refreshInterval);
-        console.log("Auto refresh enabled - data will update every 30 seconds");
+        function scheduleRefresh() {
+            const now = new Date();
+            const scheduledTime = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                9, // 9 AM
+                0, // 0 minutes
+                0  // 0 seconds
+            );
+
+            // If it's past 9 AM, schedule for next day
+            if (now > scheduledTime) {
+                scheduledTime.setDate(scheduledTime.getDate() + 1);
+            }
+
+            const timeUntilRefresh = scheduledTime - now;
+            setTimeout(() => {
+                fetchOrders();
+                scheduleRefresh(); // Schedule next day's refresh
+            }, timeUntilRefresh);
+
+            console.log(`Next refresh scheduled for: ${scheduledTime.toLocaleString()}`);
+        }
+
+        // Start the scheduling
+        scheduleRefresh();
+        
+        // Also fetch immediately when page loads
+        fetchOrders();
     }
 
     document.getElementById("inputForm").addEventListener("submit", async function (event) {
@@ -62,6 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     
 
+    // Update fetchOrders to pass isSearching parameter
     async function fetchOrders() {
         try {
             const response = await fetch("http://100.117.80.112:5000/api/get_table_prod");
@@ -71,12 +101,24 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             
             const data = await response.json();
-            console.log("Data orders:", data); // Cek di console
+            console.log("Data orders:", data);
 
             if (data.status === "success") {
                 allOrders = data.data;
-                renderOrdersTable(paginateOrders(allOrders));
-                updatePagination();
+                const isSearching = document.getElementById("searchInput")?.value.trim() !== '';
+                
+                // Initialize total qty display
+                const totalPendingQty = allOrders
+                    .filter(order => order.status_produksi === '-' || !order.status_produksi)
+                    .reduce((total, order) => total + (parseInt(order.qty) || 0), 0);
+                
+                const qtyDisplay = document.getElementById("totalQty");
+                if (qtyDisplay) {
+                    qtyDisplay.textContent = `Belum Update: ${totalPendingQty} pcs`;
+                }
+
+                renderOrdersTable(paginateOrders(allOrders, isSearching), isSearching);
+                updatePagination(isSearching);
             } else {
                 console.error("Gagal mengambil data:", data.message);
                 showResultPopup("Gagal mengambil data pesanan.", true);
@@ -87,105 +129,373 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function paginateOrders(orders) {
+    // Modify paginateOrders function
+    function paginateOrders(orders, isSearching = false) {
+        const ordersToUse = orders || (filteredOrders.length > 0 ? filteredOrders : allOrders);
+        
+        // Always hide DONE orders unless explicitly showing them
+        let ordersToDisplay = showDoneOrders ? 
+            ordersToUse : 
+            ordersToUse.filter(order => order.status_produksi !== 'DONE');
+        
+        // Sort orders by id_input in descending order
+        ordersToDisplay = ordersToDisplay.sort((a, b) => {
+            const idA = parseInt(a.id_input?.replace(/\D/g, '') || 0);
+            const idB = parseInt(b.id_input?.replace(/\D/g, '') || 0);
+            return idB - idA;
+        });
+        
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        return orders.slice(startIndex, endIndex);
+        
+        // Ensure current page is valid
+        const totalPages = Math.ceil(ordersToDisplay.length / itemsPerPage);
+        if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+            return paginateOrders(orders, isSearching);
+        }
+        
+        return ordersToDisplay.slice(startIndex, endIndex);
     }
 
-    function updatePagination() {
-        const totalPages = Math.ceil(allOrders.length / itemsPerPage);
+    // Update updatePagination function
+    function updatePagination(isSearching = false) {
+        const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        const displayOrders = showDoneOrders ? 
+            ordersToUse : 
+            ordersToUse.filter(order => order.status_produksi !== 'DONE');
+        
+        const totalPages = Math.ceil(displayOrders.length / itemsPerPage);
+        
         const pageInfo = document.getElementById("pageInfo");
         const prevButton = document.getElementById("prevPage");
         const nextButton = document.getElementById("nextPage");
+        const firstButton = document.getElementById("firstPage");
+        const lastButton = document.getElementById("lastPage");
+        const pageInput = document.getElementById("pageInput");
         
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
+        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1} (${displayOrders.length} pesanan${isSearching ? '' : ' aktif'})`;
+        
+        // Update button states
         prevButton.disabled = currentPage <= 1;
         nextButton.disabled = currentPage >= totalPages;
+        firstButton.disabled = currentPage <= 1;
+        lastButton.disabled = currentPage >= totalPages;
+        
+        pageInput.value = currentPage;
+        pageInput.max = totalPages;
+    }
+
+    function goToSpecificPage() {
+        const pageInput = document.getElementById("pageInput");
+        const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        const totalPages = Math.ceil(ordersToUse.length / itemsPerPage);
+        const pageNum = parseInt(pageInput.value, 10);
+
+        if (pageNum >= 1 && pageNum <= totalPages) {
+            currentPage = pageNum;
+            renderOrdersTable(paginateOrders(ordersToUse));
+            updatePagination();
+        } else {
+            showResultPopup(`Halaman tidak valid. Masukkan nomor antara 1 hingga ${totalPages}`, true);
+            pageInput.value = currentPage; // Reset to current page
+        }
+    }
+
+    // Add new function to toggle DONE orders visibility
+    function toggleDoneOrders() {
+        showDoneOrders = !showDoneOrders;
+        const toggleBtn = document.getElementById("toggleDoneBtn");
+        toggleBtn.innerHTML = showDoneOrders ? 
+            '<i class="fas fa-eye-slash"></i> Hide DONE Orders' : 
+            '<i class="fas fa-eye"></i> Show DONE Orders';
+        
+        const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        renderOrdersTable(paginateOrders(ordersToUse, showDoneOrders));
+        updatePagination(showDoneOrders);
     }
 
     function setupFilterAndSearch() {
         // Search functionality
+        const filterStatus = document.getElementById("filterStatus");
         const searchInput = document.getElementById("searchInput");
         const searchButton = document.getElementById("searchButton");
-        
-        searchButton.addEventListener("click", function() {
-            searchOrders(searchInput.value);
-        });
-        
-        searchInput.addEventListener("keypress", function(e) {
-            if (e.key === "Enter") {
-                searchOrders(this.value);
+        const pageInput = document.getElementById("pageInput");
+        const goPageBtn = document.getElementById("goPage");
+        const tanggalInput = document.getElementById("tanggal");
+        // Add platform filter functionality
+        const platformFilter = document.getElementById("platformFilter");
+        if (platformFilter) {
+            platformFilter.addEventListener("change", function() {
+                filterByPlatformAndAdmin(this.value);
+            });
+        }
+
+        // Add toggle button for DONE orders - Modified to use existing container
+        const controlsContainer = document.querySelector(".controls-container") || document.querySelector(".table-controls");
+        if (controlsContainer) {
+            const toggleButton = document.createElement("button");
+            toggleButton.id = "toggleDoneBtn";
+            toggleButton.className = "btn btn-outline-secondary ms-2";
+            toggleButton.innerHTML = '<i class="fas fa-eye"></i> Show DONE Orders';
+            toggleButton.onclick = toggleDoneOrders;
+            controlsContainer.appendChild(toggleButton);
+        }
+
+
+         // Fix search functionality
+        if (searchButton) {
+            searchButton.addEventListener("click", function() {
+                const searchTerm = searchInput ? searchInput.value : '';
+                performAdvancedSearch(searchTerm);
+            });
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener("keypress", function(e) {
+                if (e.key === "Enter") {
+                    performAdvancedSearch(this.value);
+                }
+            });
+        }
+
+        // Add new function for platform and admin filtering
+        function filterByPlatformAndAdmin(filterValue) {
+            if (!filterValue) {
+                filteredOrders = [...allOrders];
+            } else {
+                const [platform, admin] = filterValue.split('-');
+                
+                filteredOrders = allOrders.filter(order => {
+                    if (platform === "WhatsApp" && admin) {
+                        return order.platform === platform && order.admin === admin;
+                    }
+                    return order.platform === platform;
+                });
             }
-        });
+    
+            // Count unique pending orders (not qty)
+            const pendingOrdersCount = filteredOrders.filter(order => 
+                order.status_produksi === '-' || !order.status_produksi
+            ).length;
+    
+            // Update display
+            const qtyDisplay = document.getElementById("totalQty");
+            if (qtyDisplay) {
+                qtyDisplay.textContent = `Belum Update: ${pendingOrdersCount} pesanan`;
+            }
+    
+            currentPage = 1;
+            renderOrdersTable(paginateOrders(filteredOrders, true));
+            updatePagination(true);
+    
+            const platformName = filterValue ? filterValue.replace('-', ' - ') : 'Semua Platform';
+            showResultPopup(`Menampilkan pesanan untuk ${platformName} (${filteredOrders.length} Total pesanan, ${pendingOrdersCount} pesanan belum update)`);
+        }
         
         // Filter by status
-        const filterStatus = document.getElementById("filterStatus");
+        // const filterStatus = document.getElementById("filterStatus");
         filterStatus.addEventListener("change", function() {
-            filterOrdersByStatus(this.value);
+            const selectedStatus = this.value;
+
+            
+            if (selectedStatus === "BELUM UPDATE") {
+                // Special handling for "BELUM UPDATE"
+                filteredOrders = allOrders.filter(order => {
+                    const printStatus = order.status_print || "";
+                    const prodStatus = order.status_produksi || "";
+                    
+                    // Show rows where either status is empty/not set
+                    return (printStatus === "-" || 
+                           printStatus === "Pilih Status" || 
+                           printStatus.trim() === "" ||
+                           printStatus === null) 
+                           || 
+                           (prodStatus === "-" ||
+                           prodStatus === "Pilih Status" ||
+                           prodStatus.trim() === "" ||
+                           prodStatus === null);
+                });
+            } else if (selectedStatus) {
+                // Normal status filtering
+                filteredOrders = allOrders.filter(order => 
+                    order.status_produksi === selectedStatus || 
+                    order.status_print === selectedStatus
+                );
+            } else {
+                // Reset filter
+                filteredOrders = [...allOrders];
+            }
+            
+            currentPage = 1;
+            renderOrdersTable(paginateOrders(filteredOrders, true));
+            updatePagination(true);
+            
+            // Show result message
+            const count = filteredOrders.length;
+            showResultPopup(`Ditemukan ${count} pesanan${selectedStatus ? ` dengan status: ${selectedStatus}` : ''}`);
         });
         
         // Refresh button
+            // Update refresh button handler
         const refreshButton = document.getElementById("refreshButton");
-        refreshButton.addEventListener("click", fetchOrders);
+        refreshButton.addEventListener("click", async function() {
+            refreshButton.disabled = true;
+            refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            await fetchOrders();
+            filteredOrders = []; // Clear any filters
+            currentPage = 1; // Reset to first page
+            
+            refreshButton.disabled = false;
+            refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
+        });
         
         // Pagination controls
+        // Fix pagination controls in setupFilterAndSearch
         document.getElementById("prevPage").addEventListener("click", function() {
             if (currentPage > 1) {
                 currentPage--;
-                renderOrdersTable(paginateOrders(allOrders));
+                const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+                renderOrdersTable(paginateOrders(ordersToUse));
                 updatePagination();
             }
         });
         
         document.getElementById("nextPage").addEventListener("click", function() {
-            const totalPages = Math.ceil(allOrders.length / itemsPerPage);
+            const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+            const totalPages = Math.ceil(ordersToUse.length / itemsPerPage);
             if (currentPage < totalPages) {
                 currentPage++;
-                renderOrdersTable(paginateOrders(allOrders));
+                renderOrdersTable(paginateOrders(ordersToUse));
                 updatePagination();
             }
         });
+
+        // First Page Button
+        document.getElementById("firstPage").addEventListener("click", function() {
+            if (currentPage !== 1) {
+                currentPage = 1;
+                const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+                renderOrdersTable(paginateOrders(ordersToUse));
+                updatePagination();
+            }
+        });
+
+        // Last Page Button
+        document.getElementById("lastPage").addEventListener("click", function() {
+            const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+            const totalPages = Math.ceil(ordersToUse.length / itemsPerPage);
+            if (currentPage !== totalPages) {
+                currentPage = totalPages;
+                renderOrdersTable(paginateOrders(ordersToUse));
+                updatePagination();
+            }
+        });
+
+        goPageBtn.addEventListener("click", function() {
+            goToSpecificPage();
+        });
+
+        pageInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                goToSpecificPage();
+            }
+        });
+
+        if (tanggalInput) {
+            tanggalInput.addEventListener("change", function() {
+                filterOrdersByDate(this.value);
+            });
+        }
+
+
     }
 
-    function searchOrders(searchTerm) {
-        if (!searchTerm.trim()) {
-            renderOrdersTable(paginateOrders(allOrders));
-            updatePagination();
+    function filterOrdersByDate(selectedDate) {
+        if (!selectedDate) {
+            filteredOrders = [...allOrders];
+            currentPage = 1;
+            renderOrdersTable(paginateOrders(filteredOrders, true));
+            updatePagination(true);
+            showResultPopup("Menampilkan semua data");
             return;
         }
-    
-        const searchTermLower = searchTerm.toLowerCase();
-    
-        const filteredOrders = allOrders.filter(order =>
-            // Cari berdasarkan id_input atau id_pesanan
-            (order.id_input && order.id_input.toLowerCase().includes(searchTermLower)) ||
-            (order.id_pesanan && order.id_pesanan.toLowerCase().includes(searchTermLower))
-        );
-    
+
+        const dateStart = new Date(selectedDate);
+        dateStart.setHours(0, 0, 0, 0);
+        
+        const dateEnd = new Date(selectedDate);
+        dateEnd.setHours(23, 59, 59, 999);
+
+        filteredOrders = allOrders.filter(order => {
+            if (!order.deadline) return false;
+            
+            const orderDate = new Date(order.deadline);
+            return orderDate >= dateStart && orderDate <= dateEnd;
+        });
+
         currentPage = 1;
-        renderOrdersTable(paginateOrders(filteredOrders));
-        updatePagination();
-    
-        showResultPopup(`Ditemukan ${filteredOrders.length} hasil pencarian.`);
+        renderOrdersTable(paginateOrders(filteredOrders, true));
+        updatePagination(true);
+
+        const formattedDate = new Date(selectedDate).toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
+        showResultPopup(`Ditemukan ${filteredOrders.length} pesanan untuk tanggal ${formattedDate}`);
     }
 
-    function filterOrdersByStatus(status) {
-        if (!status) {
-            renderOrdersTable(paginateOrders(allOrders));
-            updatePagination();
+
+     // Fungsi untuk mendeteksi tombol Enter pada input pencarian
+     function handleSearchKeyPress(event) {
+        if (event.key === 'Enter') {
+            const searchTerm = event.target.value;
+            performAdvancedSearch(searchTerm);
+        }
+    }
+
+    function resetSearch() {
+        filteredOrders = [...allOrders];
+        currentPage = 1;
+        renderOrdersTable(paginateOrders(allOrders));
+        updatePagination();
+        showResultPopup("Menampilkan semua data");
+    }
+
+
+    function performAdvancedSearch(searchTerm) {
+        if (!searchTerm || !searchTerm.trim()) {
+            resetSearch();
             return;
         }
-        
-        const filteredOrders = allOrders.filter(order => 
-            order.print_status === status
-        );
-        
+
+        const searchTermLower = searchTerm.toLowerCase().trim();
+
+        // Search in all orders, including DONE status
+        filteredOrders = allOrders.filter(order => {
+            const searchFields = [
+                order.id_input,
+                order.id_pesanan,
+                typeProdukList[order.id_type],
+                produkList[order.id_produk],
+                order.platform,
+                order.status_produksi,
+                order.status_print
+            ];
+
+            return searchFields.some(field => 
+                field && field.toString().toLowerCase().includes(searchTermLower)
+            );
+        });
+
         currentPage = 1;
-        renderOrdersTable(paginateOrders(filteredOrders));
-        updatePagination();
-        
-        showResultPopup(`Ditemukan ${filteredOrders.length} pesanan dengan status: ${status}`);
+        renderOrdersTable(paginateOrders(filteredOrders, true), true);
+        updatePagination(true);
+
+        showResultPopup(`Ditemukan ${filteredOrders.length} hasil pencarian untuk "${searchTerm}"`);
     }
 
     function formatTanggal(dateString) {
@@ -200,16 +510,58 @@ document.addEventListener("DOMContentLoaded", function () {
     
         return `${day}-${month}-${year}`;
     }
+
+    function highlightDeadline(dateString) {
+        if (!dateString) return "-";
     
-    function renderOrdersTable(orders) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset jam agar hanya tanggal yang diperhitungkan
+    
+        const deadlineDate = new Date(dateString);
+        deadlineDate.setHours(0, 0, 0, 0);
+    
+        const timeDiff = deadlineDate - today;
+        const oneDay = 24 * 60 * 60 * 1000; // Jumlah milidetik dalam sehari
+    
+        let backgroundColor = "#fff"; // Default warna putih
+        let textColor = "#000"; // Default warna hitam
+    
+        if (timeDiff === 0) {
+            // Jika deadline hari ini
+            backgroundColor = "#ff4d4d"; // Merah
+            textColor = "#fff";
+        } else if (timeDiff === oneDay) {
+            // Jika deadline besok
+            backgroundColor = "#ffcc00"; // Kuning
+            textColor = "#000";
+        } else if (timeDiff > oneDay) {
+            // Jika deadline masih jauh
+            backgroundColor = "#28a745"; // Hijau
+            textColor = "#fff";
+        }
+    
+        return `<span style="background-color: ${backgroundColor}; color: ${textColor}; padding: 5px; border-radius: 5px;">${formatTanggal(dateString)}</span>`;
+    }
+    
+    function renderOrdersTable(orders, isSearching = true) {
         const tableBody = document.getElementById("table-body");
         tableBody.innerHTML = "";
     
         orders.forEach(order => {
             const row = document.createElement("tr");
+            if (order.status_produksi === 'DONE') {
+                row.classList.add('done-status-row');
+                // Hide DONE rows unless explicitly showing them
+                if (!showDoneOrders) {
+                    row.style.display = 'none';
+                }
+            }
             row.innerHTML = `
                 <td>${formatTimes(order.timestamp) || "-"}</td>
                 <td>${order.id_input || "-"}</td>
+                <td>${order.id_pesanan || "-"}</td>
+                <td>${typeProdukList[order.id_type] || "-"}</td>
+                <td>${produkList[order.id_produk] || "-"}</td>
                 <td style="color: ${getPlatformColor(order.platform).color}; background-color: ${getPlatformColor(order.platform).backgroundColor}; padding: 5px; border-radius: 5px;">
                     ${order.platform || "-"}
                 </td>
@@ -230,8 +582,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     ).join('')}
                     </select>
                 </td>
-                <td>${formatTanggal(order.deadline)}</td>
-                <td>${order.status_print || "-"}</td>
+                <td>${formatTanggal(highlightDeadline(order.deadline))}</td>
+                <td><span class="badge_input ${getBadgeClass(order.status_print)}">${order.status_print || "-"}</span></td>
                 <td>
                     <select class="status-produksi" data-id="${order.id_input}" data-column="status_produksi">
                         <option value="-" ${order.status_produksi === '-' ? 'selected' : ''}>-</option>
@@ -255,6 +607,23 @@ document.addEventListener("DOMContentLoaded", function () {
         addUpdateEventListeners();
         addInputChangeEventListeners();
         addDescriptionEventListeners();
+    }
+
+    function getBadgeClass(status) {
+        switch(status) {
+            case '-': return 'option-default';
+            case 'EDITING': return 'option-EDITING';
+            case 'PRINT VENDOR': return 'option-PRINT-VENDOR';
+            case 'PROSES PRINT': return 'option-PROSES-PRINT';
+            case 'SELESAI PRINT': return 'option-SELESAI-PRINT';
+            case 'SEDANG DI PRESS': return 'option-SEDANG-DI-PRESS';
+            case 'SEDANG DI JAHIT': return 'option-SEDANG-DI-JAHIT';
+            case 'TAS SUDAH DI JAHIT': return 'option-TAS-SUDAH-DI-JAHIT';
+            case 'REJECT PRINT ULANG': return 'option-REJECT-PRINT-ULANG';
+            case 'TAS BLM ADA': return 'option-TAS-BLM-ADA';
+            case 'DONE': return 'option-DONE';
+            default: return 'option-default';
+        }
     }
 
     function getPlatformColor(platform) {
@@ -291,7 +660,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 const column = this.dataset.column;
                 const value = this.value;
     
-                updateOrderWithConfirmation(id_input, column, value);
+                // Direct update without confirmation
+                updateOrder(id_input, column, value);
             });
     
             updateSelectColor(select);
@@ -299,7 +669,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
         // Fungsi untuk mengubah warna berdasarkan status produksi
         function updateSelectColor(select) {
-            let selectedValue = select.value.replace(/ /g, "-"); // Ganti spasi dengan "-"
+            let selectedValue = select.value.replace(/ /g, "-");
             select.className = `status-produksi option-${selectedValue}`;
         }
     }
@@ -328,6 +698,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (data.table_qc) {
                 data.table_qc.forEach(q => qcList[q.ID] = q.nama);
+            }
+            if (data.table_type_produk) {
+                data.table_type_produk.forEach(t => typeProdukList[t.id_type] = t.kategori);
+            }
+            if (data.table_produk) {
+                data.table_produk.forEach(pr => produkList[pr.id_produk] = pr.nama_produk);
             }
     
             console.log("Reference data loaded successfully");
@@ -412,8 +788,20 @@ document.addEventListener("DOMContentLoaded", function () {
                     ${layoutLink && layoutLink !== "-" ? `<a href="${layoutLink}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-link"></i>LIHAT LAYOUT PRINT</a>` : "Tidak Tersedia"}
                 </td></tr>
                 <tr><th>Link Foto</th><td>
-                    ${linkFoto && linkFoto !== "-" ? `<a href="${linkFoto}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-image"></i> Lihat Foto</a>` : "Tidak Tersedia"}
-                </td></tr>
+                    ${linkFoto && linkFoto !== "-" 
+                        ? `<div class="d-flex flex-column align-items-start gap-2">
+                            <div class="image-thumbnail mb-2">
+                                <img src="${linkFoto}" alt="Order Photo" 
+                                     onclick="window.open('${linkFoto}', '_blank')"
+                                     onerror="this.onerror=null; this.src='path/to/fallback-image.png';">
+                            </div>
+                            <a href="${linkFoto}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-image"></i> Lihat Foto
+                            </a>
+                           </div>`
+                        : "Tidak Tersedia"}
+                    </td></tr>
+                <tr> 
                 <tr>
                     <th>Detail Pesanan</th>
                     <td style="white-space: pre-line;">${nama_ket || "-"}</td>
@@ -525,39 +913,87 @@ document.addEventListener("DOMContentLoaded", function () {
                 const column = this.dataset.column;
                 let value = this.value;
         
-                // Update with confirmation dialog
-                updateOrderWithConfirmation(id_input, column, value);
+                // Direct update without confirmation
+                updateOrder(id_input, column, value);
             });
         });
+    }
+
+    // Remove updateOrderWithConfirmation function as it's no longer needed
+
+    function updateOrder(id_input, column, value) {
+        const endpoint = "http://100.117.80.112:5000/api/sync-prod-to-pesanan";
         
-        // Confirm update button
-        document.getElementById("confirmUpdateBtn").addEventListener("click", function() {
-            const popup = document.getElementById("confirmUpdatePopup");
-            const id_input = popup.dataset.id;
-            const column = popup.dataset.column;
-            const value = popup.dataset.value;
-            
-            updateOrder(id_input, column, value);
-            popup.classList.remove("active");
-        });
+        if (!id_input || !column || value === undefined || value === null) {
+            showResultPopup("ID Input, Column, atau Value tidak valid!", true);
+            return;
+        }
+
+        const columnMapping = {
+            "penjahit": "id_penjahit",
+            "qc": "id_qc",
+            "status_produksi": "status_produksi"
+        };
         
-        // Cancel update button
-        document.getElementById("cancelUpdateBtn").addEventListener("click", function() {
-            const popup = document.getElementById("confirmUpdatePopup");
-            popup.classList.remove("active");
-            
-            // Reset the dropdown/input to its original value
-            const selector = `[data-id="${popup.dataset.id}"][data-column="${popup.dataset.column}"]`;
-            const element = document.querySelector(selector);
-            
-            if (element) {
-                const originalOrder = allOrders.find(order => order.id_input == popup.dataset.id);
-                if (originalOrder && element.tagName === "SELECT") {
-                    element.value = originalOrder[popup.dataset.column] || "";
-                } else if (originalOrder && element.tagName === "INPUT") {
-                    element.value = originalOrder[popup.dataset.column] || "";
+        const apiParam = columnMapping[column];
+        if (!apiParam) {
+            showResultPopup(`Kolom tidak valid: ${column}`, true);
+            return;
+        }
+
+        const requestBody = { 
+            "id_input": id_input,
+            [apiParam]: value 
+        };
+
+        // Cancel any pending update request
+        if (window.currentUpdateRequest) {
+            window.currentUpdateRequest.abort();
+        }
+        
+        const controller = new AbortController();
+        window.currentUpdateRequest = controller;
+
+        fetch(endpoint, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success" || data.message) {
+                // Update local data immediately
+                const orderToUpdate = allOrders.find(order => order.id_input === id_input);
+                if (orderToUpdate) {
+                    if (column === 'penjahit') orderToUpdate.id_penjahit = value;
+                    else if (column === 'qc') orderToUpdate.id_qc = value;
+                    else if (column === 'status_produksi') orderToUpdate.status_produksi = value;
                 }
+
+                // Update filtered orders if they exist
+                if (filteredOrders.length > 0) {
+                    const filteredOrderToUpdate = filteredOrders.find(order => order.id_input === id_input);
+                    if (filteredOrderToUpdate) {
+                        if (column === 'penjahit') filteredOrderToUpdate.id_penjahit = value;
+                        else if (column === 'qc') filteredOrderToUpdate.id_qc = value;
+                        else if (column === 'status_produksi') filteredOrderToUpdate.status_produksi = value;
+                    }
+                }
+
+                renderOrdersTable(paginateOrders(filteredOrders.length > 0 ? filteredOrders : allOrders));
+                showResultPopup(`✅ Update berhasil: ${column} -> ${value}`);
+                
+                // Schedule a delayed fetch to ensure data consistency
+                setTimeout(fetchOrders, 5000);
             }
+        })
+        .catch(error => {
+            if (error.name === 'AbortError') return;
+            showResultPopup(`Terjadi kesalahan saat update: ${error.message}`, true);
+        })
+        .finally(() => {
+            window.currentUpdateRequest = null;
         });
     }
     
@@ -565,69 +1001,121 @@ document.addEventListener("DOMContentLoaded", function () {
         const endpoint = "http://100.117.80.112:5000/api/sync-prod-to-pesanan";
         
         if (!id_input || !column) {
-            console.error("❌ Gagal mengirim update: id_input atau column tidak valid");
             showResultPopup("ID Input atau Column tidak valid!", true);
             return;
         }
-    
-        const confirmUpdateBtn = document.getElementById("confirmUpdateBtn");
-        confirmUpdateBtn.disabled = true;
-        confirmUpdateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-    
-        // Map frontend column names to API parameter names
+
+        // Handle empty selections for penjahit and qc
+        if ((column === "penjahit" || column === "qc") && !value) {
+            value = null; // Set to null instead of empty string
+        }
+
         const columnMapping = {
             "penjahit": "id_penjahit",
             "qc": "id_qc",
             "status_produksi": "status_produksi"
         };
         
-        // Get the correct parameter name for the API
         const apiParam = columnMapping[column];
-        
         if (!apiParam) {
-            console.error("❌ Kolom tidak valid untuk update:", column);
             showResultPopup(`Kolom tidak valid: ${column}`, true);
-            confirmUpdateBtn.disabled = false;
-            confirmUpdateBtn.innerHTML = 'Ya, Update';
             return;
         }
-    
-        // Create request body according to API format
-        const requestBody = { "id_input": id_input };
-        requestBody[apiParam] = value;
-    
-        console.log("📤 JSON yang dikirim:", JSON.stringify(requestBody));
-    
+
+        const requestBody = { 
+            "id_input": id_input,
+            [apiParam]: value 
+        };
+
+        // Cancel any pending update request
+        if (window.currentUpdateRequest) {
+            window.currentUpdateRequest.abort();
+        }
+        
+        const controller = new AbortController();
+        window.currentUpdateRequest = controller;
+
         fetch(endpoint, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
             body: JSON.stringify(requestBody),
+            signal: controller.signal
         })
         .then(response => {
-            console.log("📥 Response status:", response.status);
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'Update failed');
+                });
+            }
             return response.json();
         })
         .then(data => {
-            console.log("📥 Response JSON:", data);
-            if (data.status === "success") {
+            if (data.status === "success" || data.message) {
+                // Update local data immediately
+                const orderToUpdate = allOrders.find(order => order.id_input === id_input);
+                if (orderToUpdate) {
+                    if (column === 'status_produksi') {
+                        orderToUpdate.status_produksi = value;
+                        // Hide row if status is DONE
+                        if (value === 'DONE') {
+                            const row = document.querySelector(`tr:has(select[data-id="${id_input}"])`);
+                            if (row) {
+                                row.classList.add('done-status-row');
+                                row.style.display = 'none';
+                            }
+                        }
+                    }
+                }
+                if (orderToUpdate) {
+                    if (column === 'penjahit') orderToUpdate.id_penjahit = value;
+                    else if (column === 'qc') orderToUpdate.id_qc = value;
+                    else if (column === 'status_produksi') orderToUpdate.status_produksi = value;
+                }
+
+                // Update filtered orders if they exist
+                if (filteredOrders.length > 0) {
+                    const filteredOrderToUpdate = filteredOrders.find(order => order.id_input === id_input);
+                    if (filteredOrderToUpdate) {
+                        if (column === 'penjahit') filteredOrderToUpdate.id_penjahit = value;
+                        else if (column === 'qc') filteredOrderToUpdate.id_qc = value;
+                        else if (column === 'status_produksi') filteredOrderToUpdate.status_produksi = value;
+                    }
+                }
+
+                // Update UI immediately without fetching
+                renderOrdersTable(paginateOrders(filteredOrders.length > 0 ? filteredOrders : allOrders));
                 showResultPopup(`✅ Update berhasil: ${column} -> ${value}`);
-    
-                // Auto refresh data after successful update
-                fetchOrders();
-            } else {
-                // showResultPopup(`⚠️ Update gagal: ${data.message}`, true);
-                showResultPopup(`✅ Update berhasil: ${column} -> ${value}`);
+                
+                // Schedule a delayed fetch to ensure data consistency
+                setTimeout(fetchOrders, 5000);
             }
         })
         .catch(error => {
-            console.error("❌ Error:", error);
+            if (error.name === 'AbortError') return;
             showResultPopup(`Terjadi kesalahan saat update: ${error.message}`, true);
         })
         .finally(() => {
             confirmUpdateBtn.disabled = false;
             confirmUpdateBtn.innerHTML = 'Ya, Update';
+            window.currentUpdateRequest = null;
         });
     }
+
+    // Add CSS for done status rows
+    const style = document.createElement('style');
+    style.textContent = `
+        .done-status-row {
+            opacity: 0.7;
+            background-color: #f8f9fa;
+        }
+        .done-status-row:hover {
+            opacity: 1;
+        }
+    `;
+    document.head.appendChild(style);
 
     // Setup download buttons if they exist
     function setupDownloadButtons() {

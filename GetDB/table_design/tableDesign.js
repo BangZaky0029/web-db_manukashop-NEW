@@ -1,10 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
+
     let selectedOrderId = null;
     let currentPage = 1;
     let itemsPerPage = 10;
     let allOrders = [];
     let filteredOrders = []; // Data hasil filter
-    
+    let pesananColorMap = {}; 
+    let usedColorsInPage = new Set();
+    let showDoneOrders = false;
 
     // Define reference data objects
     let adminList = {};
@@ -14,6 +17,58 @@ document.addEventListener("DOMContentLoaded", function () {
     let qcList = {};
     let typeProdukList = {};
     let produkList = {};
+
+    // Add these variables at the top with other declarations
+    const predefinedColors = [
+        { h: 0, s: 70, l: 80 },    // Red-ish
+        { h: 30, s: 70, l: 80 },   // Orange-ish
+        { h: 60, s: 70, l: 80 },   // Yellow-ish
+        { h: 120, s: 70, l: 80 },  // Green-ish
+        { h: 180, s: 70, l: 80 },  // Cyan-ish
+        { h: 210, s: 70, l: 80 },  // Light Blue-ish
+        { h: 240, s: 70, l: 80 },  // Blue-ish
+        { h: 270, s: 70, l: 80 },  // Purple-ish
+        { h: 300, s: 70, l: 80 },  // Pink-ish
+        { h: 330, s: 70, l: 80 }   // Magenta-ish
+    ];
+
+    function generateRandomColor(seed) {
+        // Clear used colors when starting a new page
+        if (usedColorsInPage.size >= predefinedColors.length) {
+            usedColorsInPage.clear();
+        }
+
+        // Get index based on seed
+        const index = Math.abs(hashCode(seed)) % predefinedColors.length;
+        let color;
+        let attempts = 0;
+        let currentIndex = index;
+
+        // Find first unused color
+        while (attempts < predefinedColors.length) {
+            color = `hsl(${predefinedColors[currentIndex].h}, ${predefinedColors[currentIndex].s}%, ${predefinedColors[currentIndex].l}%)`;
+            
+            if (!usedColorsInPage.has(color)) {
+                usedColorsInPage.add(color);
+                return color;
+            }
+
+            currentIndex = (currentIndex + 1) % predefinedColors.length;
+            attempts++;
+        }
+
+        // If all colors are used (shouldn't happen with 10 predefined colors and 10 items per page)
+        return `hsl(${predefinedColors[index].h}, ${predefinedColors[index].s}%, ${predefinedColors[index].l}%)`;
+    }
+
+    // Keep the existing hashCode function
+    function hashCode(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return hash;
+    }
 
     // Initialize the page
     initApp();
@@ -34,22 +89,6 @@ document.addEventListener("DOMContentLoaded", function () {
             showResultPopup("Gagal memuat aplikasi. Silakan refresh halaman.", true);
         }
     }
-
-    document.getElementById("inputForm").addEventListener("submit", async function (event) {
-        event.preventDefault(); // Hindari reload form
-    
-        const formData = new FormData(this);
-        const response = await fetch("http://100.117.80.112:5000/api/get_table_design", {
-            method: "POST",
-            body: JSON.stringify(Object.fromEntries(formData)),
-            headers: { "Content-Type": "application/json" },
-        });
-    
-        const result = await response.json();
-        if (result.status === "success") {
-            fetchOrders();  // Panggil ulang data jika sukses
-        }
-    });
 
     
     
@@ -79,10 +118,37 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Modify the paginateOrders function
     function paginateOrders(orders) {
+        // Only filter out SELESAI PRINT orders if we're not searching and showDoneOrders is false
+        let ordersToDisplay = orders;
+        if (!showDoneOrders && filteredOrders.length === 0) {
+            ordersToDisplay = orders.filter(order => order.status_print !== "SELESAI PRINT");
+        }
+
+        // Sort orders by id_input in descending order
+        const sortedOrders = [...ordersToDisplay].sort((a, b) => {
+            const idA = parseInt(a.id_input?.replace(/\D/g, '') || 0);
+            const idB = parseInt(b.id_input?.replace(/\D/g, '') || 0);
+            return idB - idA;  // Descending order
+        });
+
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        return orders.slice(startIndex, endIndex);
+        return sortedOrders.slice(startIndex, endIndex);
+    }
+
+    // Add toggle function
+    function toggleDoneOrders() {
+        showDoneOrders = !showDoneOrders;
+        const toggleBtn = document.getElementById("toggleDoneBtn");
+        toggleBtn.innerHTML = showDoneOrders ? 
+            '<i class="fas fa-eye-slash"></i> Hide Completed Orders' : 
+            '<i class="fas fa-eye"></i> Show Completed Orders';
+        
+        const ordersToUse = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        renderOrdersTable(paginateOrders(ordersToUse));
+        updatePagination();
     }
 
     function updateTableDisplay() {
@@ -100,15 +166,32 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     function updatePagination() {
-        const totalOrders = filteredOrders.length > 0 ? filteredOrders.length : allOrders.length; // Menghitung total orders
-        const totalPages = Math.ceil(totalOrders / itemsPerPage);
+        // Get current dataset (filtered or all orders)
+        const currentData = filteredOrders.length > 0 ? filteredOrders : allOrders;
+        
+        // Get unfinished orders
+        const unfinishedOrders = currentData.filter(order => order.status_print !== "SELESAI PRINT");
+        const totalUnfinished = unfinishedOrders.length;
+        
+        // Calculate total pages based on unfinished orders count
+        const totalPages = Math.ceil(totalUnfinished / itemsPerPage);
+
+        // Ensure current page is valid
+        if (currentPage > totalPages) {
+            currentPage = totalPages || 1;
+            updateTableDisplay();
+        }
+
         const pageInfo = document.getElementById("pageInfo");
         const prevButton = document.getElementById("prevPage");
         const nextButton = document.getElementById("nextPage");
         const firstButton = document.getElementById("firstPage");
         const lastButton = document.getElementById("lastPage");
     
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`; // Memperbarui teks halaman
+        // Update page info text
+        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}, ada ${totalUnfinished} pesanan 'BELUM SELESAI'`;
+        
+        // Update button states
         prevButton.disabled = currentPage <= 1;
         nextButton.disabled = currentPage >= totalPages;
         firstButton.disabled = currentPage <= 1;
@@ -166,6 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById("goPage").click();
             }
         });
+
     }
     
     // Panggil fungsi setup kontrol pagination saat dokumen siap
@@ -173,28 +257,53 @@ document.addEventListener("DOMContentLoaded", function () {
     
 
     function setupFilterAndSearch() {
-        // Search functionality
-        const searchInput = document.getElementById("searchInput");
+       // Add null checks before adding event listeners
+       const searchInput = document.getElementById("searchInput");
         const searchButton = document.getElementById("searchButton");
-        
-        searchButton.addEventListener("click", function() {
-            performAdvancedSearch(searchInput.value);
-        });
-        
-        searchInput.addEventListener("keypress", function(e) {
-            if (e.key === "Enter") {
-                performAdvancedSearch(this.value);
-            }
-        });
-        
-        // Filter by status
         const filterStatus = document.getElementById("filterStatus");
-        filterStatus.addEventListener("change", function() {
-            filterOrdersByStatus(this.value);
-        });
+        const tanggalInput = document.getElementById("tanggal");
+        const refreshButton = document.getElementById("refreshButton");
+        // Add toggle button for DONE orders
+        const controlsContainer = document.querySelector(".controls-container") || document.querySelector(".table-controls");
+        if (controlsContainer) {
+            const toggleButton = document.createElement("button");
+            toggleButton.id = "toggleDoneBtn";
+            toggleButton.className = "btn btn-outline-secondary ms-2";
+            toggleButton.innerHTML = '<i class="fas fa-eye"></i> Show Completed Orders';
+            toggleButton.onclick = toggleDoneOrders;
+            controlsContainer.appendChild(toggleButton);
+        }
+
+        if (searchButton && searchInput) {
+            searchButton.addEventListener("click", function() {
+                performAdvancedSearch(searchInput.value);
+            });
+            
+            searchInput.addEventListener("keypress", function(e) {
+                if (e.key === "Enter") {
+                    performAdvancedSearch(this.value);
+                }
+            });
+        }
+        
+        if (filterStatus) {
+            filterStatus.addEventListener("change", function() {
+                filterOrdersByStatus(this.value);
+            });
+        }
+
+        if (tanggalInput) {
+            tanggalInput.addEventListener("change", function() {
+                const selectedDate = this.value;
+                filterOrdersByDate(selectedDate);
+            });
+        }
+        
+        if (refreshButton) {
+            refreshButton.addEventListener("click", fetchOrders);
+        }
         
         // Refresh button
-        const refreshButton = document.getElementById("refreshButton");
         refreshButton.addEventListener("click", fetchOrders);
         
         // Pagination controls
@@ -206,35 +315,37 @@ document.addEventListener("DOMContentLoaded", function () {
                 updatePagination();
             }
         });
-        
-        document.getElementById("nextPage").addEventListener("click", function() {
-            const totalOrders = filteredOrders.length > 0 ? filteredOrders.length : allOrders.length;
-            const totalPages = Math.ceil(totalOrders / itemsPerPage);
-            if (currentPage < totalPages) {
-                currentPage++;
-                const dataToPaginate = filteredOrders.length > 0 ? filteredOrders : allOrders;
-                renderOrdersTable(paginateOrders(dataToPaginate));
-                updatePagination();
-            }
-        });
-        
+    }
+    
+
+        // Fungsi untuk mendeteksi tombol Enter pada input pencarian
+    function handleSearchKeyPress(event) {
+        if (event.key === 'Enter') {
+            const searchTerm = event.target.value;
+            performAdvancedSearch(searchTerm);
+        }
+    }
+
+    function resetSearch() {
+        filteredOrders = [];
+        currentPage = 1;
+        updateTableDisplay();
+        showResultPopup("Menampilkan semua data");
     }
 
     function performAdvancedSearch(searchTerm) {
-        if (!searchTerm.trim()) {
-            resetSearch(); // Reset tampilan jika input kosong
+        if (!searchTerm || !searchTerm.trim()) {
+            resetSearch();
             return;
         }
-    
+
         const searchTermLower = searchTerm.toLowerCase().trim();
-    
+
         // Advanced search across multiple fields
         filteredOrders = allOrders.filter(order => {
-            // Search across all possible string fields
-            return Object.values(order).some(value => {
-                // Convert to string and check if it includes the search term
+            // Check if any field matches the search term
+            const matchesSearch = Object.values(order).some(value => {
                 if (value === null || value === undefined) return false;
-                
                 const stringValue = String(value).toLowerCase();
                 return stringValue.includes(searchTermLower);
             }) || 
@@ -243,15 +354,68 @@ document.addEventListener("DOMContentLoaded", function () {
             (desainerList[order.id_desainer] && desainerList[order.id_desainer].toLowerCase().includes(searchTermLower)) ||
             (typeProdukList[order.id_type] && typeProdukList[order.id_type].toLowerCase().includes(searchTermLower)) ||
             (produkList[order.id_produk] && produkList[order.id_produk].toLowerCase().includes(searchTermLower));
+
+            // Return true if the order matches search, regardless of its status
+            return matchesSearch;
         });
-    
+
         // Reset to first page after search
         currentPage = 1;
-        updateTableDisplay(filteredOrders);
-    
+        // Use the filtered orders directly without additional filtering
+        renderOrdersTable(paginateOrders(filteredOrders));
+        updatePagination();
+
         // Show search results
         showResultPopup(`Ditemukan ${filteredOrders.length} hasil pencarian.`);
     }
+
+
+    // Handle date selection
+    const tanggalInput = document.getElementById("tanggal");
+    tanggalInput.addEventListener("change", function() {
+        const selectedDate = this.value;
+        
+        // Tampilkan tanggal yang dipilih di console (bisa diganti aksi lain)
+        console.log("Tanggal yang dipilih:", selectedDate);
+
+        // Add null check before updating tanggalOutput
+        const output = document.getElementById("tanggalOutput");
+        if (output) {
+            output.textContent = "Tanggal terpilih: " + new Date(selectedDate).toLocaleDateString();
+        }
+
+        // Bisa tambahkan aksi filtering berdasarkan tanggal
+        filterOrdersByDate(selectedDate);
+    });
+
+    function filterOrdersByDate(selectedDate) {
+        if (!selectedDate) {
+            filteredOrders = allOrders; // Reset ke semua data
+            updateTableDisplay();
+            return;
+        }
+
+        // Filter data berdasarkan tanggal deadline
+        filteredOrders = allOrders.filter(order => {
+            const orderDate = new Date(order.deadline).toISOString().split('T')[0];
+            return orderDate === selectedDate;
+        });
+
+        currentPage = 1;
+        updateTableDisplay();
+
+        // Tampilkan pesan hasil filter
+        showResultPopup(`Ditemukan ${filteredOrders.length} pesanan dengan deadline: ${formatTanggal(selectedDate)}`);
+    }
+
+
+
+    // Replace the direct event listener attachment with a check
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', handleSearchKeyPress);
+    }
+
 
     function filterOrdersByStatus(status) {
         if (!status) {
@@ -268,15 +432,19 @@ document.addEventListener("DOMContentLoaded", function () {
     
         currentPage = 1;
         renderOrdersTable(paginateOrders(filteredOrders));
-        updatePagination();
+        updatePagination(filteredOrders);
     
         showResultPopup(`Ditemukan ${filteredOrders.length} pesanan dengan status: ${status}`);
     }
 
-    document.getElementById("sortSelect").addEventListener("change", function () {
-        const sortValue = this.value;
-        sortOrders(sortValue);
-    });
+    // Also modify the sort select event listener
+    const sortSelect = document.getElementById("sortSelect");
+    if (sortSelect) {
+        sortSelect.addEventListener("change", function () {
+            const sortValue = this.value;
+            sortOrders(sortValue);
+        });
+    }
     
     function sortOrders(sortValue) {
         if (!sortValue) return;
@@ -299,7 +467,8 @@ document.addEventListener("DOMContentLoaded", function () {
         renderOrdersTable(paginateOrders(sortedOrders));
         updatePagination();
     }
-    
+
+
     function highlightDeadline(dateString) {
         if (!dateString) return "-";
     
@@ -332,6 +501,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return `<span style="background-color: ${backgroundColor}; color: ${textColor}; padding: 5px; border-radius: 5px;">${formatTanggal(dateString)}</span>`;
     }
     
+    
+    
 
     function formatTanggal(dateString) {
         if (!dateString) return "-";
@@ -343,18 +514,498 @@ document.addEventListener("DOMContentLoaded", function () {
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
     
-        return `${day}-${month}`;
+        return `${day}-${month}-${year}`;
+    }
+
+
+        
+
+
+    function setupImageUploadListeners() {
+        // Add bulk upload button to the table header
+        const tableHeader = document.querySelector('thead tr');
+        if (tableHeader) {
+            const uploadCell = tableHeader.querySelector('th:nth-child(9)'); // Adjust index based on your table
+            if (uploadCell) {
+                const bulkUploadBtn = document.createElement('button');
+                bulkUploadBtn.className = 'btn btn-sm btn-primary ml-2 bulk-upload-btn';
+                bulkUploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload All';
+                bulkUploadBtn.style.display = 'none';
+                uploadCell.appendChild(bulkUploadBtn);
+            }
+        }
+    
+        // Function to check for pending uploads
+        function checkPendingUploads() {
+            const pendingCells = document.querySelectorAll('.image-upload-cell[data-pending-file]');
+            const bulkUploadBtn = document.querySelector('.bulk-upload-btn');
+            if (bulkUploadBtn) {
+                bulkUploadBtn.style.display = pendingCells.length > 0 ? 'inline-block' : 'none';
+            }
+        }
+    
+        // Modify existing preview function to update bulk upload button
+        const originalShowImagePreview = showImagePreview;
+        window.showImagePreview = async function(file, id_input) {
+            await originalShowImagePreview(file, id_input);
+            checkPendingUploads();
+        }
+    
+        // Add bulk upload modal HTML
+        document.body.insertAdjacentHTML('beforeend', `
+            <div class="modal fade" id="bulkUploadModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Upload All Images</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="pending-uploads-container"></div>
+                            <div class="upload-progress mt-3" style="display: none;">
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary confirm-bulk-upload">Upload All</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+    
+        // Add bulk upload functionality
+        document.querySelector('.bulk-upload-btn')?.addEventListener('click', async () => {
+            const pendingCells = document.querySelectorAll('.image-upload-cell[data-pending-file]');
+            const container = document.querySelector('.pending-uploads-container');
+            container.innerHTML = '';
+    
+            pendingCells.forEach(cell => {
+                const id_input = cell.dataset.id;
+                const preview = cell.querySelector('.image-preview').src;
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="pending-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="${preview}" style="width: 50px; height: 50px; object-fit: contain;">
+                            <span class="ms-3">ID: ${id_input}</span>
+                            <div class="upload-status ms-auto"></div>
+                        </div>
+                    </div>
+                `);
+            });
+    
+            const bulkUploadModal = new bootstrap.Modal(document.getElementById('bulkUploadModal'));
+            bulkUploadModal.show();
+        });
+    
+        // Handle bulk upload confirmation
+document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async () => {
+    const pendingCells = document.querySelectorAll('.image-upload-cell[data-pending-file]');
+    const progressBar = document.querySelector('.upload-progress');
+    const progressBarInner = progressBar.querySelector('.progress-bar');
+    const confirmButton = document.querySelector('.confirm-bulk-upload');
+    
+    try {
+        // Disable the confirm button and show loading state
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        progressBar.style.display = 'block';
+        
+        let completed = 0;
+        const totalCells = pendingCells.length;
+        const results = [];
+
+        // Process all cells in parallel with Promise.all
+        await Promise.all(Array.from(pendingCells).map(async (cell) => {
+            const id_input = cell.dataset.id;
+            const statusDiv = document.querySelector(`.pending-item:nth-child(${completed + 1}) .upload-status`);
+            
+            try {
+                const fileData = JSON.parse(cell.dataset.pendingFile);
+                const previewImg = cell.querySelector('.image-preview');
+                const file = await fetch(previewImg.src)
+                    .then(res => res.blob())
+                    .then(blob => new File([blob], fileData.name || 'image.png', { type: fileData.type || 'image/png' }));
+
+                // Upload the file
+                const formData = new FormData();
+                formData.append('layout_file', file);
+                formData.append('id_input', id_input);
+
+                const response = await fetch('http://100.117.80.112:5000/api/update-layout', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    statusDiv.innerHTML = '<span class="text-success">✓ Success</span>';
+                    results.push({ success: true, id_input, url: result.layout_url });
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<span class="text-danger">✗ Failed</span>';
+                results.push({ success: false, id_input, error });
+            }
+
+            completed++;
+            progressBarInner.style.width = `${(completed / totalCells) * 100}%`;
+        }));
+
+        // Update UI for successful uploads without page refresh
+        results.forEach(result => {
+            if (result.success) {
+                const cell = document.querySelector(`.image-upload-cell[data-id="${result.id_input}"]`);
+                if (!cell) return;
+
+                const btnGroup = cell.querySelector('.btn-group');
+                let existingViewBtn = btnGroup.querySelector('.view-link-btn');
+                
+                if (existingViewBtn) {
+                    existingViewBtn.href = result.url;
+                } else {
+                    const newBtn = document.createElement('a');
+                    newBtn.href = result.url;
+                    newBtn.target = '_blank';
+                    newBtn.className = 'btn btn-success view-link-btn';
+                    newBtn.innerHTML = '<i class="fas fa-external-link-alt"></i>';
+                    btnGroup.appendChild(newBtn);
+                }
+
+                // Clean up UI elements
+                const previewContainer = cell.querySelector('.preview-container');
+                const submitBtn = cell.querySelector('.submit-image-btn');
+                const fileInput = cell.querySelector('.layout-file');
+                
+                if (previewContainer) previewContainer.style.display = 'none';
+                if (submitBtn) submitBtn.style.display = 'none';
+                if (fileInput) fileInput.value = '';
+                delete cell.dataset.pendingFile;
+            }
+        });
+
+        // Show final status
+        const successCount = results.filter(r => r.success).length;
+        showResultPopup(`Successfully uploaded ${successCount} of ${totalCells} images`);
+
+        // Close modal after all operations are complete
+        setTimeout(() => {
+            document.querySelector('.bulk-upload-btn').style.display = 'none';
+            bootstrap.Modal.getInstance(document.getElementById('bulkUploadModal')).hide();
+        }, 1500);
+
+    } catch (error) {
+        console.error('Bulk upload error:', error);
+        showResultPopup('Error during bulk upload', true);
+    } finally {
+        // Reset button state
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = 'Upload All';
+    }
+});
+    
+        // Clear any existing focus first
+        const clearAllFocus = () => {
+            document.querySelectorAll('.image-upload-cell[data-focused="true"]').forEach(cell => {
+                cell.removeAttribute('data-focused');
+            }, { passive: true });
+        };
+        
+        // Focus handler to enable paste on the cell - with exclusive focusing
+        document.querySelectorAll('.image-upload-cell').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                // First clear focus from all cells
+                clearAllFocus();
+                // Then set focus on current cell
+                cell.setAttribute('data-focused', 'true');
+                // Prevent event from bubbling to document
+                e.stopPropagation();
+            });
+        }, { passive: true });
+        
+        // Global paste handler for the entire document
+        document.addEventListener('paste', async (e) => {
+            const items = e.clipboardData.items;
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    const file = item.getAsFile();
+                    const focusedCell = document.querySelector('.image-upload-cell[data-focused="true"]');
+                    if (focusedCell) {
+                        e.preventDefault();
+                        const id_input = focusedCell.dataset.id;
+                        await showImagePreview(file, id_input);
+                        // Store the file in the cell's data for later use
+                        focusedCell.dataset.pendingFile = JSON.stringify({
+                            name: file.name,
+                            type: file.type,
+                            lastModified: file.lastModified
+                        });
+                    }
+                    break;
+                }
+            }
+        }, { passive: true });
+    
+        // Click outside to remove focus attribute
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.image-upload-cell')) {
+                clearAllFocus();
+            }
+        }, { passive: true });
+    
+        // File input change handler
+        document.querySelectorAll('.layout-file').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const cell = e.target.closest('.image-upload-cell');
+                    const id_input = cell.dataset.id;
+                    await showImagePreview(file, id_input);
+                    // Store the file in the cell's data
+                    cell.dataset.pendingFile = JSON.stringify({
+                        name: file.name,
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                }
+            });
+        }, { passive: true });
+    
+        // Upload button click handler
+        document.querySelectorAll('.upload-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                // Clear other focuses first
+                clearAllFocus();
+                // Set focus on this cell
+                const cell = btn.closest('.image-upload-cell');
+                cell.setAttribute('data-focused', 'true');
+                
+                const fileInput = document.getElementById(`file-${e.target.dataset.id}`);
+                fileInput.click();
+                
+                // Stop propagation
+                e.stopPropagation();
+            });
+        }, { passive: true });
+    
+        // Paste button click handler
+        document.querySelectorAll('.paste-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                // Clear other focuses first
+                clearAllFocus();
+                
+                const cell = e.target.closest('.image-upload-cell');
+                cell.setAttribute('data-focused', 'true');
+                
+                // Prompt user to paste
+                showResultPopup('Press Ctrl+V to paste image from clipboard', false, 2000);
+                
+                // Stop propagation
+                e.stopPropagation();
+            });
+        }, { passive: true });
+    
+        // FIX: Improved Submit button click handler
+        // Replace the submit button event listener with this improved version
+        // Replace the submit button event listener with this improved version
+        document.querySelectorAll('.submit-image-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                // Prevent default behavior
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Ensure we're not inside a form that could submit
+                const cell = this.closest('.image-upload-cell');
+                const id_input = cell.dataset.id;
+                
+                // Disable the button during upload
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                
+                try {
+                    const fileInput = document.getElementById(`file-${id_input}`);
+                    let file = null;
+
+                    if (fileInput && fileInput.files[0]) {
+                        file = fileInput.files[0];
+                    } else if (cell.dataset.pendingFile) {
+                        const previewImg = cell.querySelector('.image-preview');
+                        if (previewImg && previewImg.src) {
+                            file = await fetch(previewImg.src)
+                                .then(res => res.blob())
+                                .then(blob => new File([blob], 'pasted-image.png', { type: 'image/png' }));
+                        }
+                    }
+
+                    if (!file) {
+                        showResultPopup('No file selected', true);
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('layout_file', file);
+                    formData.append('id_input', id_input);
+
+                    const response = await fetch('http://100.117.80.112:5000/api/update-layout', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        // Update UI without refresh
+                        const btnGroup = cell.querySelector('.btn-group');
+                        let viewLinkBtn = btnGroup.querySelector('.view-link-btn');
+                        
+                        if (viewLinkBtn) {
+                            viewLinkBtn.href = result.layout_url;
+                        } else {
+                            const newBtn = document.createElement('a');
+                            newBtn.href = result.layout_url;
+                            newBtn.target = '_blank';
+                            newBtn.className = 'btn btn-success view-link-btn';
+                            newBtn.innerHTML = '<i class="fas fa-external-link-alt"></i>';
+                            btnGroup.appendChild(newBtn);
+                        }
+
+                        // Clean up UI
+                        const previewContainer = cell.querySelector('.preview-container');
+                        if (previewContainer) previewContainer.style.display = 'none';
+                        if (fileInput) fileInput.value = '';
+                        delete cell.dataset.pendingFile;
+                        this.style.display = 'none';
+
+                        // Show success message
+                        showResultPopup('Layout berhasil diupload');
+                    } else {
+                        throw new Error(result.message || 'Upload failed');
+                    }
+
+                } catch (error) {
+                    console.error('Upload failed:', error);
+                    showResultPopup('Upload failed: ' + error.message, true);
+                } finally {
+                    // Reset button state
+                    this.disabled = false;
+                    this.innerHTML = 'Submit';
+                }
+
+                return false; // Ensure no form submission
+            });
+        });
+
+                 // Add preview link button handler
+        document.querySelectorAll('.preview-link-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const cell = e.target.closest('.image-upload-cell');
+                const previewContainer = cell.querySelector('.preview-container');
+                const previewImage = cell.querySelector('.image-preview');
+                const hideBtn = cell.querySelector('.hide-preview-btn');
+                const cancelBtn = cell.querySelector('.cancel-preview');
+                let imageUrl = btn.dataset.url;
+
+                // Handle Google Drive links
+                if (imageUrl.includes('drive.google.com')) {
+                    // Convert share link to direct image link
+                    const fileId = imageUrl.match(/[-\w]{25,}/);
+                    if (fileId) {
+                        imageUrl = `https://drive.google.com/uc?export=view&id=${fileId[0]}`;
+                    }
+                }
+
+                // Show loading state
+                previewImage.src = ''; // Clear current image
+                previewContainer.style.display = 'block';
+                previewImage.style.opacity = '0.5';
+                // Hide the cancel button for preview mode
+                if (cancelBtn) cancelBtn.style.display = 'none';
+                
+                try {
+                    // Load the image with CORS headers
+                    await new Promise((resolve, reject) => {
+                        previewImage.crossOrigin = "anonymous";
+                        previewImage.onload = resolve;
+                        previewImage.onerror = reject;
+                        previewImage.src = imageUrl;
+                    });
+                    
+                    // Show hide button and hide preview button
+                    btn.style.display = 'none';
+                    hideBtn.style.display = 'inline-block';
+                    previewImage.style.opacity = '1';
+                } catch (error) {
+                    console.error('Preview error:', error);
+                    showResultPopup('Failed to load image preview. The image might be restricted.', true);
+                    previewContainer.style.display = 'none';
+                }
+            });
+        });
+
+        // Add hide preview button handler
+        document.querySelectorAll('.hide-preview-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const cell = e.target.closest('.image-upload-cell');
+                const previewContainer = cell.querySelector('.preview-container');
+                const previewBtn = cell.querySelector('.preview-link-btn');
+                const cancelBtn = cell.querySelector('.cancel-preview');
+                
+                previewContainer.style.display = 'none';
+                btn.style.display = 'none';
+                previewBtn.style.display = 'inline-block';
+                // Reset cancel button display for upload mode
+                if (cancelBtn) cancelBtn.style.display = 'block';
+            });
+        }); 
+    
+        // Cancel preview button handler
+        document.querySelectorAll('.cancel-preview').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const cell = e.target.closest('.image-upload-cell');
+                const fileInput = cell.querySelector('.layout-file');
+                const submitBtn = cell.querySelector('.submit-image-btn');
+                
+                cell.querySelector('.preview-container').style.display = 'none';
+                submitBtn.style.display = 'none';
+                fileInput.value = '';
+                
+                // Stop propagation
+                e.stopPropagation();
+            });
+        }, { passive: true });
+        
+        // Initialize multi-select feature
+        initMultiSelectFeature();
     }
     
+    // Update the renderOrdersTable function to include better visual indicators
     function renderOrdersTable(orders) {
         const tableBody = document.getElementById("table-body");
         tableBody.innerHTML = "";
     
+        // Move orderedKeys inside the function
+        const orderedKeys = [
+            "id_input", "id_pesanan", "platform", "qty", "id_designer", "layout_link",
+            "deadline", "status_print", "timestamp", "id_produk", "id_type"
+        ];
+    
         orders.forEach(order => {
+            // Generate or get existing color for this id_pesanan
+            if (!pesananColorMap[order.id_pesanan]) {
+                pesananColorMap[order.id_pesanan] = generateRandomColor(order.id_pesanan);
+            }
+    
             const row = document.createElement("tr");
+            
             row.innerHTML = `
                 <td>${formatTimes(order.timestamp) || "-"}</td>
                 <td>${order.id_input || "-"}</td>
+                <td style="background-color: ${pesananColorMap[order.id_pesanan]}; padding: 5px;">${order.id_pesanan || "-"}</td>
                 <td>${typeProdukList[order.id_type] || "-"}</td>
                 <td>${produkList[order.id_produk] || "-"}</td>
                 <td style="color: ${getPlatformColor(order.platform).color}; background-color: ${getPlatformColor(order.platform).backgroundColor}; padding: 5px; border-radius: 5px;">
@@ -362,20 +1013,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 </td>
                 <td>${order.qty || "-"}</td>
                 <td>
-                    <select class="desainer-dropdown" data-id="${order.id_input}" data-column="desainer">
+                    <select class="desainer-dropdown" data-id="${order.id_input}" data-column="desainer" 
+                        onchange="updateDesainerColor(this)"
+                        style="background-color: ${getColorByID(order.id_designer, 'desainer').backgroundColor}; color: ${getColorByID(order.id_designer, 'desainer').color};">
                         <option value="">Pilih Desainer</option>
                         ${Object.entries(desainerList).map(([id, nama]) =>
                             `<option value="${id}" ${order.id_designer == id ? 'selected' : ''}>${nama}</option>`
                         ).join('')}
                     </select>
                 </td>
-                <td>
-                    <input type="text" class="layout-link-input" data-id="${order.id_input}" data-column="layout_link"
-                        value="${order.layout_link || ''}" placeholder="Masukkan link" />
-                    <button class="submit-link-btn" data-id="${order.id_input}">Submit</button>
-                    <button class="open-link-btn" data-id="${order.id_input}">🔗</button>
+                                <td class="image-upload-cell" data-id="${order.id_input}">
+                    <div class="upload-controls">
+                        <div class="preview-container" style="display: none;">
+                            <img class="image-preview" style="max-width: 100px; max-height: 100px;">
+                            <button class="btn btn-sm btn-danger cancel-preview">&times;</button>
+                        </div>
+                        <div class="input-group">
+                            <input type="file" 
+                                id="file-${order.id_input}" 
+                                class="layout-file" 
+                                accept="image/*" 
+                                data-id="${order.id_input}" 
+                                style="display: none;">
+                            <div class="btn-group">
+                                <button class="btn btn-primary upload-btn" data-id="${order.id_input}" title="Upload image">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                                ${order.layout_link ? `
+                                    <a href="${order.layout_link}" target="_blank" class="btn btn-success view-link-btn">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                    <button class="btn btn-info preview-link-btn" data-url="${order.layout_link}" title="Show preview">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-secondary hide-preview-btn" style="display: none;" title="Hide preview">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary submit-image-btn" style="display: none;" data-id="${order.id_input}">
+                            Submit
+                        </button>
+                    </div>
                 </td>
-                <td>${highlightDeadline(order.deadline)}</td>
+                <td>${formatTanggal(highlightDeadline(order.deadline)) || "-"}</td>
                 <td>
                     <select class="status-print option" data-id="${order.id_input}" data-column="print_status">
                         <option value="-" ${order.status_print === '-' ? 'selected' : ''}>-</option>
@@ -398,7 +1080,324 @@ document.addEventListener("DOMContentLoaded", function () {
         addUpdateEventListeners();
         addInputChangeEventListeners();
         addDescriptionEventListeners();
+        // Add event listeners for image uploads after rendering
+        setupImageUploadListeners();
     }
+    
+    async function showImagePreview(file, id_input) {
+
+        const cell = document.querySelector(`.image-upload-cell[data-id="${id_input}"]`);
+        if (!cell) return;
+    
+        const previewContainer = cell.querySelector('.preview-container');
+        const previewImage = cell.querySelector('.image-preview');
+        const submitBtn = cell.querySelector('.submit-image-btn');
+    
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                submitBtn.style.display = 'block';
+                resolve();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    async function uploadImage(file, id_input) {
+        const formData = new FormData();
+        formData.append('layout_file', file);
+        formData.append('id_input', id_input);
+    
+        try {
+            const response = await fetch('http://100.117.80.112:5000/api/update-layout', {
+                method: 'POST',
+                body: formData
+            });
+    
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                // Update UI without refresh
+                const cell = document.querySelector(`.image-upload-cell[data-id="${id_input}"]`);
+                const btnGroup = cell.querySelector('.btn-group');
+                
+                // Update or add view link button
+                let viewLinkBtn = btnGroup.querySelector('.view-link-btn');
+                if (viewLinkBtn) {
+                    viewLinkBtn.href = result.layout_url;
+                } else {
+                    const newBtn = document.createElement('a');
+                    newBtn.href = result.layout_url;
+                    newBtn.target = '_blank';
+                    newBtn.className = 'btn btn-success view-link-btn';
+                    newBtn.innerHTML = '<i class="fas fa-external-link-alt"></i>';
+                    btnGroup.appendChild(newBtn);
+                }
+                
+                showResultPopup('Layout berhasil diupload');
+                return result;
+            } else {
+                throw new Error(result.message || 'Upload failed');
+            }
+        } catch (error) {
+            throw error;
+        }
+    }
+    
+    // Add this function to enable multi-select and multi-paste functionality
+    function setupMultiSelectPasteFunction() {
+        // Keep track of selected cells
+        let selectedCells = [];
+        
+        // Function to visually highlight selected cells
+        function updateSelectedCellsUI() {
+            // Clear all highlights first
+            document.querySelectorAll('.image-upload-cell').forEach(cell => {
+                cell.classList.remove('multi-selected');
+            });
+            
+            // Apply highlight to selected cells
+            selectedCells.forEach(cell => {
+                cell.classList.add('multi-selected');
+            });
+            
+            // Show selection count if more than one cell is selected
+            const selectionCount = selectedCells.length;
+            let selectionCountEl = document.getElementById('multi-selection-count');
+            
+            if (selectionCount > 1) {
+                if (!selectionCountEl) {
+                    selectionCountEl = document.createElement('div');
+                    selectionCountEl.id = 'multi-selection-count';
+                    selectionCountEl.className = 'fixed-bottom m-3 p-2 bg-primary text-white rounded';
+                    selectionCountEl.style.width = 'auto';
+                    selectionCountEl.style.left = 'auto';
+                    selectionCountEl.style.right = '20px';
+                    selectionCountEl.style.bottom = '20px';
+                    selectionCountEl.style.zIndex = '1050';
+                    document.body.appendChild(selectionCountEl);
+                }
+                selectionCountEl.innerHTML = `<i class="fas fa-th-large"></i> ${selectionCount} cells selected`;
+                selectionCountEl.style.display = 'block';
+            } else if (selectionCountEl) {
+                selectionCountEl.style.display = 'none';
+            }
+        }
+        
+        // Add CSS for highlighting selected cells
+        const style = document.createElement('style');
+        style.textContent = `
+            .image-upload-cell.multi-selected {
+                background-color: rgba(0, 123, 255, 0.15);
+                outline: 2px dashed #007bff;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Add click handler to all image upload cells
+        document.querySelectorAll('.image-upload-cell').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                // Check if Ctrl/Cmd key is pressed
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Toggle selection for this cell
+                    const cellIndex = selectedCells.indexOf(cell);
+                    if (cellIndex === -1) {
+                        // Add to selection
+                        selectedCells.push(cell);
+                    } else {
+                        // Remove from selection
+                        selectedCells.splice(cellIndex, 1);
+                    }
+                    
+                    updateSelectedCellsUI();
+                } else {
+                    // Regular click behavior (already handled in existing code)
+                    // But we'll clear multi-selection when clicking without Ctrl
+                    if (selectedCells.length > 0) {
+                        selectedCells = [];
+                        updateSelectedCellsUI();
+                    }
+                }
+            });
+        });
+        
+        // Add paste handler to document
+        document.addEventListener('paste', async (e) => {
+            // Only process if we have selected cells
+            if (selectedCells.length > 0) {
+                const items = e.clipboardData.items;
+                for (let item of items) {
+                    if (item.type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        
+                        // Show progress indicator
+                        let progressEl = document.getElementById('multi-paste-progress');
+                        if (!progressEl) {
+                            progressEl = document.createElement('div');
+                            progressEl.id = 'multi-paste-progress';
+                            progressEl.className = 'fixed-bottom p-3 bg-dark text-white';
+                            progressEl.style.zIndex = '1100';
+                            document.body.appendChild(progressEl);
+                        }
+                        progressEl.innerHTML = `<div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="text-center mt-2">Processing image for multiple cells...</div>`;
+                        progressEl.style.display = 'block';
+                        
+                        // For each selected cell, show preview and store file
+                        for (let i = 0; i < selectedCells.length; i++) {
+                            const cell = selectedCells[i];
+                            const id_input = cell.dataset.id;
+                            
+                            // Update progress
+                            const progressBar = progressEl.querySelector('.progress-bar');
+                            progressBar.style.width = `${(i / selectedCells.length) * 100}%`;
+                            
+                            // Show preview
+                            await showImagePreview(file, id_input);
+                            
+                            // Store file data
+                            cell.dataset.pendingFile = JSON.stringify({
+                                name: file.name || 'pasted-image.png',
+                                type: file.type || 'image/png',
+                                lastModified: file.lastModified || new Date().getTime()
+                            });
+                        }
+                        
+                        // Hide progress and show success message
+                        progressEl.style.display = 'none';
+                        showResultPopup(`Image pasted to ${selectedCells.length} cells successfully. Click "Submit" in each cell to upload.`, false, 3000);
+                        
+                        // Show bulk upload button if available
+                        checkPendingUploads();
+                        
+                        break;
+                    }
+                }
+            }
+        });
+        
+        // Clear selection when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.image-upload-cell') && !e.ctrlKey && !e.metaKey) {
+                selectedCells = [];
+                updateSelectedCellsUI();
+            }
+        });
+        
+        // Add keyboard shortcut for submission (Ctrl+Enter)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && selectedCells.length > 0) {
+                e.preventDefault();
+                
+                // Ask for confirmation before bulk upload
+                if (confirm(`Submit images for ${selectedCells.length} selected cells?`)) {
+                    // Trigger upload for all selected cells
+                    selectedCells.forEach(cell => {
+                        const submitBtn = cell.querySelector('.submit-image-btn');
+                        if (submitBtn && submitBtn.style.display !== 'none') {
+                            submitBtn.click();
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Add a global keyboard shortcut for selecting all cells (Ctrl+A)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                
+                // Select all image upload cells
+                selectedCells = Array.from(document.querySelectorAll('.image-upload-cell'));
+                updateSelectedCellsUI();
+                
+                showResultPopup(`Selected ${selectedCells.length} cells. Press Ctrl+V to paste image to all selected cells.`, false, 2000);
+            }
+        });
+        
+        // Add info tooltip/instructions
+        const infoElement = document.createElement('div');
+        infoElement.className = 'card bg-light mb-3 fixed-bottom';
+        infoElement.style.width = '300px';
+        infoElement.style.right = '20px';
+        infoElement.style.bottom = '20px';
+        infoElement.style.opacity = '0.9';
+        infoElement.style.zIndex = '1000';
+        
+        infoElement.innerHTML = `
+            <div class="card-header">
+                <b>Multi-select Tips</b>
+                <button type="button" class="close" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 ps-3">
+                    <li>Press Ctrl+Click to select multiple cells</li>
+                    <li>Press Ctrl+V to paste image to all selected cells</li>
+                    <li>Press Ctrl+Enter to submit all selected cells</li>
+                    <li>Press Ctrl+A to select all cells</li>
+                </ul>
+            </div>
+        `;
+        
+        document.body.appendChild(infoElement);
+        
+        // Add close button functionality
+        infoElement.querySelector('.close').addEventListener('click', () => {
+            infoElement.style.display = 'none';
+        });
+        
+        // Auto-hide info after 10 seconds
+        setTimeout(() => {
+            infoElement.style.display = 'none';
+        }, 10000);
+    }
+    
+    // Function to check for pending uploads (moved out of setupImageUploadListeners for reference)
+    function checkPendingUploads() {
+        const pendingCells = document.querySelectorAll('.image-upload-cell[data-pending-file]');
+        const bulkUploadBtn = document.querySelector('.bulk-upload-btn');
+        if (bulkUploadBtn) {
+            bulkUploadBtn.style.display = pendingCells.length > 0 ? 'inline-block' : 'none';
+        }
+    }
+    
+    // Call this function after renderOrdersTable
+    function initMultiSelectFeature() {
+        // Wait for the DOM to be fully loaded
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setupMultiSelectPasteFunction();
+        } else {
+            document.addEventListener('DOMContentLoaded', setupMultiSelectPasteFunction);
+        }
+    }
+    
+    
+
+    
+
+    function getColorByID(id, table) {
+        let color = "white"; // Default warna teks
+    
+        if (table === 'desainer') {
+            if (id === 1101) return { color, backgroundColor: "purple" };  // Desainer IMAM
+            if (id === 1102) return { color, backgroundColor: "red" };     // Desainer JHODI
+        }
+        return { color: "black", backgroundColor: "transparent" }; // Default
+    }
+    
+
+
+
 
     function getPlatformColor(platform) {
         const colors = {
@@ -507,19 +1506,13 @@ document.addEventListener("DOMContentLoaded", function () {
     async function fetchReferenceData() {
         try {
             const response = await fetch("http://100.117.80.112:5000/api/references");
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             
             const data = await response.json();
-    
-            if (data.table_admin) {
-                data.table_admin.forEach(a => adminList[a.ID] = a.nama);
-            }
-            if (data.table_desainer) {
-                data.table_desainer.forEach(d => desainerList[d.ID] = d.nama);
-            }
+            
+            // Safely update reference lists
+            if (data.table_admin) adminList = Object.fromEntries(data.table_admin.map(a => [a.ID, a.nama]));
+            if (data.table_desainer) desainerList = Object.fromEntries(data.table_desainer.map(d => [d.ID, d.nama]));
             if (data.table_kurir) {
                 data.table_kurir.forEach(k => kurirList[k.ID] = k.nama);
             }
@@ -537,10 +1530,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
     
             console.log("Reference data loaded successfully");
-    
         } catch (error) {
-            console.error("Gagal mengambil data referensi:", error);
-            showResultPopup("Gagal memuat data referensi. Beberapa fitur mungkin tidak berfungsi dengan baik.", true);
+            console.error("Failed to fetch reference data:", error);
+            showResultPopup("Failed to load reference data. Some features might not work properly.", true);
         }
     }   
 
@@ -618,11 +1610,21 @@ document.addEventListener("DOMContentLoaded", function () {
                     ? `<a href="${order.layout_link}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-link"></i> Buka Link</a>`
                     : "-"
                 }</td></tr>
-                <tr><th>Link Foto</th><td>${
-                    linkFoto && linkFoto !== "-" 
-                    ? `<a href="${linkFoto}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-image"></i> Lihat Foto</a>` 
-                    : "Tidak Tersedia"
-                }</td></tr>
+                <tr><th>Link Foto</th><td>
+                    ${linkFoto && linkFoto !== "-" 
+                        ? `<div class="d-flex flex-column align-items-start gap-2">
+                            <div class="image-thumbnail mb-2">
+                                <img src="${linkFoto}" alt="Order Photo" 
+                                     onclick="window.open('${linkFoto}', '_blank')"
+                                     onerror="this.onerror=null; this.src='path/to/fallback-image.png';">
+                            </div>
+                            <a href="${linkFoto}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-image"></i> Lihat Foto
+                            </a>
+                           </div>`
+                        : "Tidak Tersedia"}
+                    </td></tr>
+                <tr> 
                 <tr>
                     <th>Detail Pesanan</th>
                     <td style="white-space: pre-line;">${ketNama || "-"}</td>
@@ -875,10 +1877,13 @@ document.addEventListener("DOMContentLoaded", function () {
     
     function updateOrder(id_input, column, value) {
         const endpoint = "http://100.117.80.112:5000/api/update-design";
-    
+        
+        // Check if confirmUpdateBtn exists before accessing
         const confirmUpdateBtn = document.getElementById("confirmUpdateBtn");
-        confirmUpdateBtn.disabled = true;
-        confirmUpdateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        if (confirmUpdateBtn) {
+            confirmUpdateBtn.disabled = true;
+            confirmUpdateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        }
     
         // Buat format JSON sesuai yang diharapkan API
         const payload = {
@@ -910,19 +1915,30 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .then(data => {
             if (data.status === "success") {
-                showResultPopup(`Update berhasil: ${column} -> ${value}`);
-                fetchOrders(); // Ambil data terbaru setelah update sukses
-            } else {
-                showResultPopup(`Update gagal: ${data.message}`, true);
+                const isZero = value === 0 || value === "0";
+                const popupMessage = `Update berhasil: ${column} -> ${value}`;
+                
+                showResultPopup(popupMessage, isZero);
+                
+                // Only try to update container style if it exists
+                const container = document.getElementById("tableContainer");
+                if (container && isZero) {
+                    container.style.backgroundColor = "#e74c3c";
+                }
+                
+                // Refresh the orders after successful update
+                fetchOrders();
             }
         })
         .catch(error => {
-            console.error("Error:", error);
-            showResultPopup(`Terjadi kesalahan saat update: ${error.message}`, true);
+            console.error("Error updating order:", error);
+            showResultPopup("Gagal mengupdate data: " + error.message, true);
         })
         .finally(() => {
-            confirmUpdateBtn.disabled = false;
-            confirmUpdateBtn.innerHTML = 'Ya, Update';
+            if (confirmUpdateBtn) {
+                confirmUpdateBtn.disabled = false;
+                confirmUpdateBtn.innerHTML = 'Confirm Update';
+            }
         });
     }
     
