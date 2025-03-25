@@ -18,18 +18,17 @@
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Cari ID Input & id Pesanan...">
                 <button id="searchButton"><i class="fas fa-search"></i></button>
-                <a href="/WEB-SERVER/GetDB/table_produksi/tableUrgent.html" 
-                    class="btn-deadline">
-                        CEK DEADLINE HARI INI
-                </a>
+
+                <div class="download-buttons">
+                    <button id="downloadAllExcel" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Download Semua Data
+                    </button>
+                </div>            
                 
             </div>
-            <div class="download-buttons">
-                <button id="downloadAllExcel" class="btn btn-success">
-                    <i class="fas fa-file-excel"></i> Download Semua Data
-                </button>
-            </div>            
             <div class="search-container">
+                <label for="tanggal">Sortir Deadline :</label>
+                <input type="date" id="tanggal" name="tanggal">
                 
                 <select id="filterStatus">
                     <option value="">Semua Status</option>
