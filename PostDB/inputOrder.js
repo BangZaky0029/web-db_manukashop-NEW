@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
         { id_produk: 47005, nama_produk: "MNK-Middle", id_bahan: 46001 },
         { id_produk: 47006, nama_produk: "Travel Bag", id_bahan: 46001 },
         { id_produk: 47007, nama_produk: "ToteBag Large", id_bahan: 46001 },
+        { id_produk: 47076, nama_produk: "ToteBag Large Pouch", id_bahan: 46001},
         { id_produk: 47008, nama_produk: "Kawai", id_bahan: 46001 },
         { id_produk: 47009, nama_produk: "Mini Sling", id_bahan: 46001 },
         { id_produk: 47010, nama_produk: "Medium Sling", id_bahan: 46001 },
@@ -79,7 +80,10 @@ document.addEventListener('DOMContentLoaded', function() {
         { id_produk: 47068, nama_produk: "SR.Cover XL (30 inch)-scuba", id_bahan: 46007 },
         { id_produk: 47069, nama_produk: "SR.Cover L (28 inch)-scuba", id_bahan: 46007 },
         { id_produk: 47070, nama_produk: "SR.Cover M (24 inch)-scuba", id_bahan: 46007 },
-        { id_produk: 47071, nama_produk: "SR.Cover S (20 inch)-scuba", id_bahan: 46007 }
+        { id_produk: 47071, nama_produk: "SR.Cover S (20 inch)-scuba", id_bahan: 46007 },
+        { id_produk: 47073, nama_produk: "Tas Koper Bu Ola", id_bahan: 46008},
+        { id_produk: 47074, nama_produk: "Renata Bag", id_bahan: 46005},
+        { id_produk: 47075, nama_produk: "Estelle Bag", id_bahan: 46001}
     ];
     
 

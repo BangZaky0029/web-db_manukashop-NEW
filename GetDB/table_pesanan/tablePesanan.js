@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const nextButton = document.getElementById("nextPage");
         const firstButton = document.getElementById("firstPage");
         const lastButton = document.getElementById("lastPage");
+        
     
         pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
         prevButton.disabled = currentPage <= 1;
@@ -226,6 +227,8 @@ document.addEventListener("DOMContentLoaded", function () {
             sortOrders(this.value);
         });
 
+        
+
         function resetSearch() {
             // Clear search input
             document.getElementById("searchInput").value = '';
@@ -251,6 +254,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 updateTableDisplay();
             }
         });
+
+        
     }
 
         // Add this new function
@@ -354,6 +359,43 @@ document.addEventListener("DOMContentLoaded", function () {
         // Update pagination
         updatePagination(dataToDisplay);
     }
+
+    // Add this to your existing filterOrders function
+function filterOrders() {
+    const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+    const selectedStatus = document.getElementById("filterStatus").value;
+    const selectedDate = document.getElementById("tanggal").value;
+
+    filteredOrders = allOrders.filter(order => {
+        // Search filter
+        const searchMatch = (order.id_input && order.id_input.toString().toLowerCase().includes(searchTerm)) ||
+                          (order.id_pesanan && order.id_pesanan.toString().toLowerCase().includes(searchTerm));
+
+        // Status filter
+        let statusMatch = true;
+        if (selectedStatus) {
+            if (selectedStatus === "BELUM DONE") {
+                // Check if either status_produksi OR status_print is "-"
+                statusMatch = (order.status_produksi === "-" || order.status_print === "-");
+            } else {
+                statusMatch = order.status_produksi === selectedStatus;
+            }
+        }
+
+        // Date filter
+        let dateMatch = true;
+        if (selectedDate) {
+            const orderDate = order.deadline ? order.deadline.split('T')[0] : null;
+            dateMatch = orderDate === selectedDate;
+        }
+
+        return searchMatch && statusMatch && dateMatch;
+    });
+
+    // Reset to first page and update display
+    currentPage = 1;
+    updateTableDisplay();
+}
 
 
     function filterOrdersByStatus(status) {

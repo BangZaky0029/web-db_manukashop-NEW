@@ -168,6 +168,35 @@ button#refreshButton i {
     margin-right: 5px;
 }
 
+/* Styling for close button */
+.close {
+    position: absolute;
+    right: 10px;
+    top: 0;
+    background: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.close:hover {
+    opacity: 1;
+}
+
+.close span {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+.close:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    border-radius: 4px;
+}
+
 
 select {
     appearance: none;
