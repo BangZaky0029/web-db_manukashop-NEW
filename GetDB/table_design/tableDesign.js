@@ -1390,7 +1390,8 @@ document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async 
     
         if (table === 'desainer') {
             if (id === 1101) return { color, backgroundColor: "purple" };  // Desainer IMAM
-            if (id === 1102) return { color, backgroundColor: "red" };     // Desainer JHODI
+            if (id === 1102) return { color, backgroundColor: "red" }; // Desainer JHODI
+            if (id === 1103) return { color, backgroundColor: "black" };     // Desainer ZAKY
         }
         return { color: "black", backgroundColor: "transparent" }; // Default
     }

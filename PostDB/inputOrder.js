@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const adminNames = {
         '1001': 'Lilis',
         '1002': 'Ina',
-        '1003': 'Indy'
+        '1003': 'Indy',
+        '1004': 'Untung'
     };
 
     // DB Data untuk Product
@@ -83,7 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
         { id_produk: 47071, nama_produk: "SR.Cover S (20 inch)-scuba", id_bahan: 46007 },
         { id_produk: 47073, nama_produk: "Tas Koper Bu Ola", id_bahan: 46008},
         { id_produk: 47074, nama_produk: "Renata Bag", id_bahan: 46005},
-        { id_produk: 47075, nama_produk: "Estelle Bag", id_bahan: 46001}
+        { id_produk: 47075, nama_produk: "Estelle Bag", id_bahan: 46001},
+        { id_produk: 47077, nama_produk: "ARA BAG", id_bahan: 46001}
     ];
     
 
@@ -220,35 +222,69 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to select a product
     function selectProduct(productId, productName) {
         selectedProductId = productId;
-        
+    
         // Update dropdown
         if (productSelect) {
             productSelect.innerHTML = `<option value="${productId}" selected>${productName}</option>`;
         }
-        
+    
         // Show the product selection group
         if (productSelectionGroup) {
             productSelectionGroup.style.display = 'block';
         }
-        
-        // Update keterangan text with product name
+    
+        // Tampilkan opsi/penutup setelah produk dipilih
+        if (opsiPenutupGroup) {
+            opsiPenutupGroup.style.display = 'block';
+        }
+    
+        // Reset opsi & penutup saat produk baru dipilih
+        if (opsiSelect) opsiSelect.value = '';
+        if (penutupSelect) penutupSelect.value = '';
+    
+        updateNamaKetProduk(productName);
+    }
+    
+    // Helper untuk update baris Produk di Keterangan Orderan
+    function updateNamaKetProduk(productName) {
         const namaKet = document.getElementById('nama_ket');
         if (namaKet) {
             const typeText = selectedType === '45001' ? 'RS' : 'Non-RS';
+            const opsiText = opsiSelect && opsiSelect.value ? opsiSelect.value : '';
+            const penutupText = penutupSelect && penutupSelect.value ? penutupSelect.value : '';
+            let produkLine = productName;
+            if (opsiText && penutupText) {
+                produkLine = `${productName}, ${opsiText} ${penutupText}`;
+            }
             const lines = namaKet.value.split('\n');
             const nameIndex = lines.findIndex(line => line.trim().startsWith('Produk'));
             const typeIndex = lines.findIndex(line => line.trim().startsWith('Type'));
-            
+    
             if (nameIndex !== -1) {
-                lines[nameIndex] = ` Produk             : ${productName}`;
+                lines[nameIndex] = ` Produk             : ${produkLine}`;
             }
-            
+    
             if (typeIndex !== -1) {
                 lines[typeIndex] = ` Type               : ${typeText}`;
             }
-            
+    
             namaKet.value = lines.join('\n');
         }
+    }
+    
+    // Event listener untuk opsi/penutup
+    if (opsiSelect) {
+        opsiSelect.addEventListener('change', function() {
+            // Ambil nama produk dari dropdown
+            const selectedOption = productSelect?.options[0]?.text || '';
+            updateNamaKetProduk(selectedOption);
+        });
+    }
+    if (penutupSelect) {
+        penutupSelect.addEventListener('change', function() {
+            const selectedOption = productSelect?.options[0]?.text || '';
+            updateNamaKetProduk(selectedOption);
+        });
     }
 
     // Handle clipboard paste events (for screenshots)

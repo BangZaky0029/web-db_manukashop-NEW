@@ -66,6 +66,27 @@
                 </select>
             </div>
     
+            <!-- Tambahkan di sini -->
+            <div class="form-group opsi-penutup-group" id="opsiPenutupGroup" style="display: none;">
+                <div style="display: flex; gap: 16px;">
+                    <div style="flex:1;">
+                        <label for="opsiSelect">Opsi</label>
+                        <select id="opsiSelect" name="opsi">
+                            <option value="">-- Pilih Opsi --</option>
+                            <option value="1 SISI">1 SISI</option>
+                            <option value="2 SISI">2 SISI</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;">
+                        <label for="penutupSelect">Penutup</label>
+                        <select id="penutupSelect" name="penutup">
+                            <option value="">-- Pilih Penutup --</option>
+                            <option value="MAGNET">MAGNET</option>
+                            <option value="ZIPPER">ZIPPER</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="deadline">Deadline</label>
                 <input type="date" id="deadline" name="deadline" required>

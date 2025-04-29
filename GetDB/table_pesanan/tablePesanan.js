@@ -427,6 +427,7 @@ function filterOrders() {
             if (id === 1001) return { color, backgroundColor: "pink" }; // Admin Lilis
             if (id === 1002) return { color, backgroundColor: "olive" }; // Admin Ina
             if (id === 1003) return { color, backgroundColor: "yellow" }; // Admin Indy
+            if (id === 1004) return { color : "white", backgroundColor: "blue" }; // Admin Indy
         } else if (table === 'desainer') {
             if (id === 1101) return { color, backgroundColor: "purple" }; // Desainer IMAM
             if (id === 1102) return { color, backgroundColor: "red" }; // Desainer JHODI
