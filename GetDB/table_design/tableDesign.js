@@ -1070,8 +1070,20 @@ document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async 
                 <td>
                     <div style="display: flex; gap: 10px; justify-content: center;">
                         <button class="desc-table" data-id="${order.id_input}"><i class="fas fa-info-circle"></i></button>
+                        <button class="copy-order-btn" 
+                            data-id="${order.id_input}" 
+                            data-qty="${order.qty || '-'}"
+                            data-produk="${produkList[order.id_produk] || '-'}"
+                            title="Copy"
+                            style="background: #f3f6fa; border: 1px solid #bfc9d9; color: #2d3a4a; border-radius: 6px; padding: 6px 10px; transition: background 0.2s, box-shadow 0.2s; box-shadow: 0 1px 2px rgba(44,62,80,0.04); cursor: pointer;"
+                            onmouseover="this.style.background='#e2eaf6'; this.style.boxShadow='0 2px 6px rgba(44,62,80,0.10)';"
+                            onmouseout="this.style.background='#f3f6fa'; this.style.boxShadow='0 1px 2px rgba(44,62,80,0.04)';"
+                        >
+                            <i class="fas fa-copy"></i>
+                        </button>
                     </div>
                 </td>
+
             `;
             tableBody.appendChild(row);
         });
@@ -1082,7 +1094,96 @@ document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async 
         addDescriptionEventListeners();
         // Add event listeners for image uploads after rendering
         setupImageUploadListeners();
+
+        // Attach copy event listeners AFTER rendering table
+    document.querySelectorAll('.copy-order-btn').forEach(btn => {
+        btn.onclick = async function() {
+            const id_input = btn.getAttribute('data-id');
+            const qty = btn.getAttribute('data-qty');
+            let produk = btn.getAttribute('data-produk');
+
+            try {
+                const response = await fetch(`http://100.117.80.112:5000/api/get_nama_ket/${id_input}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.nama_ket) {
+                        const match = data.nama_ket.match(/Produk\s*:([^\n\r]+)/i);
+                        if (match && match[1]) {
+                            produk = match[1].trim();
+                        }
+                    }
+                }
+            } catch (e) {
+                // fallback to default
+            }
+
+            const copyText = `${id_input} (${produk}), ${qty} PCS`;
+
+            // Use a fallback for clipboard if navigator.clipboard fails
+            let copied = false;
+            try {
+                await navigator.clipboard.writeText(copyText);
+                copied = true;
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = copyText;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    copied = true;
+                } catch (err2) {
+                    alert('Failed to copy');
+                }
+                document.body.removeChild(textarea);
+            }
+            if (copied) {
+                showTopNotification('Teks berhasil disalin ke clipboard!');
+            }
+        };
+    });
+
+            
     }
+
+    // Add this function near the bottom of your file or in a utilities section
+function showTopNotification(message) {
+    let notif = document.getElementById('top-copy-notif');
+    if (!notif) {
+        notif = document.createElement('div');
+        notif.id = 'top-copy-notif';
+        notif.style.position = 'fixed';
+        notif.style.top = '20px';
+        notif.style.left = '50%';
+        notif.style.transform = 'translateX(-50%)';
+        notif.style.background = '#28a745';
+        notif.style.color = '#fff';
+        notif.style.padding = '12px 32px';
+        notif.style.borderRadius = '8px';
+        notif.style.fontSize = '1.1rem';
+        notif.style.zIndex = '9999';
+        notif.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+        notif.style.display = 'none';
+        document.body.appendChild(notif);
+    }
+    notif.textContent = message;
+    notif.style.display = 'block';
+    notif.style.opacity = '1';
+
+    setTimeout(() => {
+        notif.style.transition = 'opacity 0.5s';
+        notif.style.opacity = '0';
+        setTimeout(() => {
+            notif.style.display = 'none';
+            notif.style.transition = '';
+        }, 500);
+    }, 2000);
+}
+
+
+
+        
     
     async function showImagePreview(file, id_input) {
 

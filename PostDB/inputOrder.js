@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
         '1001': 'Lilis',
         '1002': 'Ina',
         '1003': 'Indy',
-        '1004': 'Untung'
+        '1004': 'Untung',
+        '1005': 'Billa'
     };
 
     // DB Data untuk Product

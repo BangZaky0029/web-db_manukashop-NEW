@@ -259,45 +259,49 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
         // Add this new function
-    function filterOrdersByDeadline(selectedDate) {
-        if (!selectedDate) {
-            // If no date selected, show all orders
-            filteredOrders = [];
+        function filterOrdersByDeadline(selectedDate) {
+            if (!selectedDate) {
+                // If no date selected, show all orders
+                filteredOrders = [];
+                currentPage = 1;
+                updateTableDisplay();
+                return;
+            }
+        
+            // Create start and end dates for the selected date
+            const startDate = new Date(selectedDate);
+            startDate.setHours(0, 0, 0, 0);
+            
+            const endDate = new Date(selectedDate);
+            endDate.setHours(23, 59, 59, 999);
+        
+            // Filter orders by deadline
+            filteredOrders = allOrders.filter(order => {
+                if (!order.deadline) return false;
+                const orderDate = new Date(order.deadline);
+                return orderDate >= startDate && orderDate <= endDate;
+            });
+        
+            // Sort filtered orders by deadline
+            filteredOrders.sort((a, b) => {
+                const dateA = new Date(a.deadline);
+                const dateB = new Date(b.deadline);
+                return dateA - dateB;
+            });
+        
+            // Reset to first page
             currentPage = 1;
             updateTableDisplay();
-            return;
+        
+            // Show result message
+            const resultCount = filteredOrders.length;
+            const formattedDate = new Date(selectedDate).toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            showResultPopup(`Ditemukan ${resultCount} pesanan dengan deadline: ${formattedDate}`);
         }
-
-        // Convert selected date to YYYY-MM-DD format for comparison
-        const filterDate = new Date(selectedDate).toISOString().split('T')[0];
-
-        // Filter orders by deadline
-        filteredOrders = allOrders.filter(order => {
-            if (!order.deadline) return false;
-            const orderDeadline = new Date(order.deadline).toISOString().split('T')[0];
-            return orderDeadline === filterDate;
-        });
-
-        // Sort filtered orders by deadline
-        filteredOrders.sort((a, b) => {
-            const dateA = new Date(a.deadline);
-            const dateB = new Date(b.deadline);
-            return dateA - dateB;
-        });
-
-        // Reset to first page
-        currentPage = 1;
-        updateTableDisplay();
-
-        // Show result message
-        const resultCount = filteredOrders.length;
-        const formattedDate = new Date(selectedDate).toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-        showResultPopup(`Ditemukan ${resultCount} pesanan dengan deadline: ${formattedDate}`);
-    }
 
         // Add reset functionality to the refresh button
     document.getElementById("refreshButton").addEventListener("click", function() {
@@ -427,7 +431,8 @@ function filterOrders() {
             if (id === 1001) return { color, backgroundColor: "pink" }; // Admin Lilis
             if (id === 1002) return { color, backgroundColor: "olive" }; // Admin Ina
             if (id === 1003) return { color, backgroundColor: "yellow" }; // Admin Indy
-            if (id === 1004) return { color : "white", backgroundColor: "blue" }; // Admin Indy
+            if (id === 1004) return { color : "white", backgroundColor: "blue" }; // Admin Untung,
+            if (id === 1005) return { color : "white", backgroundColor: "red" }; // Admin Billa
         } else if (table === 'desainer') {
             if (id === 1101) return { color, backgroundColor: "purple" }; // Desainer IMAM
             if (id === 1102) return { color, backgroundColor: "red" }; // Desainer JHODI
@@ -1102,20 +1107,32 @@ function filterOrders() {
     }
     
     function setupDownloadButtons() {
-        // Tombol Download PDF
-        document.getElementById("downloadPDF").addEventListener("click", function() {
+        // Remove existing event listeners first
+        const downloadPDFBtn = document.getElementById("downloadPDF");
+        const downloadExcelBtn = document.getElementById("downloadExcel");
+        const downloadAllExcelBtn = document.getElementById("downloadAllExcel");
+    
+        // Clone and replace elements to remove all existing event listeners
+        const newDownloadPDFBtn = downloadPDFBtn.cloneNode(true);
+        const newDownloadExcelBtn = downloadExcelBtn.cloneNode(true);
+        const newDownloadAllExcelBtn = downloadAllExcelBtn.cloneNode(true);
+        
+        downloadPDFBtn.parentNode.replaceChild(newDownloadPDFBtn, downloadPDFBtn);
+        downloadExcelBtn.parentNode.replaceChild(newDownloadExcelBtn, downloadExcelBtn);
+        downloadAllExcelBtn.parentNode.replaceChild(newDownloadAllExcelBtn, downloadAllExcelBtn);
+    
+        // Add new event listeners
+        newDownloadPDFBtn.addEventListener("click", function() {
             handleDownloadPDF();
-        });
+        }, { once: true }); // This ensures the event fires only once
     
-        // Tombol Download Excel (per pesanan)
-        document.getElementById("downloadExcel").addEventListener("click", function() {
+        newDownloadExcelBtn.addEventListener("click", function() {
             handleDownloadExcel();
-        });
+        }, { once: true });
     
-        // Tombol Download Semua Data (Excel)
-        document.getElementById("downloadAllExcel").addEventListener("click", function() {
-            handleDownloadAllExcel();
-        });
+        newDownloadAllExcelBtn.addEventListener("click", function() {
+            showDownloadOptionsModal();
+        }, { once: true });
     }
     
     
@@ -1237,187 +1254,191 @@ function filterOrders() {
         showResultPopup("PDF berhasil didownload!");
     }
 
-    // Add this HTML to your modal section in tablePesanan.html
-const dateRangeModal = `
-<div class="modal fade" id="dateRangeModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Download Data Excel</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Pilih Range</label>
-                    <select class="form-select" id="rangeType">
-                        <option value="custom">Custom Range</option>
-                        <option value="week">Minggu Ini</option>
-                        <option value="month">Bulan Ini</option>
-                    </select>
-                </div>
-                <div id="customDateRange">
-                    <div class="mb-3">
-                        <label class="form-label">Dari Tanggal</label>
-                        <input type="datetime-local" class="form-control" id="startDate">
+    function showDownloadOptionsModal() {
+        const modalHTML = `
+            <div class="modal fade" id="downloadOptionsModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Download Data Excel</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih Opsi Download</label>
+                                <select class="form-select" id="downloadType">
+                                    <option value="all">Semua Data</option>
+                                    <option value="month">Berdasarkan Bulan</option>
+                                    <option value="week">Berdasarkan Minggu</option>
+                                    <option value="custom">Range Tanggal Custom</option>
+                                </select>
+                            </div>
+    
+                            <!-- Month Selection -->
+                            <div id="monthSelection" class="mb-3" style="display: none;">
+                                <label class="form-label">Pilih Bulan</label>
+                                <select class="form-select" id="monthSelect">
+                                    ${Array.from({length: 12}, (_, i) => {
+                                        const date = new Date(2024, i, 1);
+                                        return `<option value="${i}">${date.toLocaleString('id-ID', { month: 'long' })}</option>`;
+                                    }).join('')}
+                                </select>
+                                <select class="form-select mt-2" id="yearSelect">
+                                    ${Array.from({length: 5}, (_, i) => {
+                                        const year = new Date().getFullYear() - 2 + i;
+                                        return `<option value="${year}">${year}</option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+    
+                            <!-- Week Selection -->
+                            <div id="weekSelection" class="mb-3" style="display: none;">
+                                <label class="form-label">Dari Minggu</label>
+                                <input type="date" class="form-control mb-2" id="weekStart">
+                                <label class="form-label">Sampai Minggu</label>
+                                <input type="date" class="form-control" id="weekEnd">
+                            </div>
+    
+                            <!-- Custom Date Range -->
+                            <div id="customDateRange" class="mb-3" style="display: none;">
+                                <label class="form-label">Dari Tanggal</label>
+                                <input type="datetime-local" class="form-control mb-2" id="customStart">
+                                <label class="form-label">Sampai Tanggal</label>
+                                <input type="datetime-local" class="form-control" id="customEnd">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="button" class="btn btn-primary" id="confirmDownload">Download</button>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Sampai Tanggal</label>
-                        <input type="datetime-local" class="form-control" id="endDate">
-                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" id="confirmDownload">Download</button>
-            </div>
-        </div>
-    </div>
-</div>`;
-
-// Add this to your DOMContentLoaded event
-document.body.insertAdjacentHTML('beforeend', dateRangeModal);
-
-// Update the handleDownloadAllExcel function
-function handleDownloadAllExcel() {
-    const modal = new bootstrap.Modal(document.getElementById('dateRangeModal'));
-    const rangeType = document.getElementById('rangeType');
-    const customDateRange = document.getElementById('customDateRange');
-    const startDate = document.getElementById('startDate');
-    const endDate = document.getElementById('endDate');
+            </div>`;
     
-    // Handle range type change
-    rangeType.addEventListener('change', function() {
-        if (this.value === 'custom') {
-            customDateRange.style.display = 'block';
-        } else {
-            customDateRange.style.display = 'none';
-            // Set predefined ranges
-            const now = new Date();
-            if (this.value === 'week') {
-                startDate.value = new Date(now.setDate(now.getDate() - 7)).toISOString().slice(0, 16);
-            } else if (this.value === 'month') {
-                startDate.value = new Date(now.setMonth(now.getMonth() - 1)).toISOString().slice(0, 16);
-            }
-            endDate.value = new Date().toISOString().slice(0, 16);
+        // Add modal to document if it doesn't exist
+        if (!document.getElementById('downloadOptionsModal')) {
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
         }
-    });
-
-    // Handle download confirmation
-    document.getElementById('confirmDownload').addEventListener('click', function() {
-        const start = new Date(startDate.value);
-        const end = new Date(endDate.value);
+    
+        // Setup event listeners
+        const modal = new bootstrap.Modal(document.getElementById('downloadOptionsModal'));
+        const downloadType = document.getElementById('downloadType');
         
-        const filteredData = allOrders.filter(order => {
-            const orderDate = new Date(order.timestamp);
-            return orderDate >= start && orderDate <= end;
+        downloadType.addEventListener('change', function() {
+            document.getElementById('monthSelection').style.display = this.value === 'month' ? 'block' : 'none';
+            document.getElementById('weekSelection').style.display = this.value === 'week' ? 'block' : 'none';
+            document.getElementById('customDateRange').style.display = this.value === 'custom' ? 'block' : 'none';
         });
-
-        if (filteredData.length === 0) {
-            showResultPopup("Tidak ada data dalam range tanggal yang dipilih", true);
-            return;
-        }
-
-        const formattedData = filteredData.map(order => {
-            const formattedOrder = {...order};
-            // Format dates
-            if (formattedOrder.deadline) {
-                formattedOrder.deadline = formatTanggal(formattedOrder.deadline);
-            }
-            if (formattedOrder.timestamp) {
-                formattedOrder.timestamp = new Date(formattedOrder.timestamp).toLocaleString();
-            }
-            
-            // Format references
-            formattedOrder.id_desainer = desainerList[formattedOrder.id_desainer] || '-';
-            formattedOrder.id_penjahit = penjahitList[formattedOrder.id_penjahit] || '-';
-            formattedOrder.qc = qcList[formattedOrder.qc] || '-';
-            formattedOrder.id_admin = adminList[formattedOrder.id_admin] || '-';
-            
-            // Add product and type information
-            formattedOrder.nama_produk = produkList[formattedOrder.id_produk] || '-';
-            formattedOrder.tipe_produk = typeProdukList[formattedOrder.id_type] || '-';
-            
-            return formattedOrder;
-        });
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(formattedData);
-
-        // Customize column widths
-        const colWidths = [];
-        for (let i = 0; i < Object.keys(formattedData[0]).length; i++) {
-            colWidths.push({ wch: 15 }); // Set default width
-        }
-        ws['!cols'] = colWidths;
-
-        XLSX.utils.book_append_sheet(wb, ws, "Orders Data");
-        XLSX.writeFile(wb, `Orders_${formatTanggal(start)}_to_${formatTanggal(end)}.xlsx`);
-        
-        modal.hide();
-        showResultPopup("Excel berhasil didownload!");
-    });
-
-    modal.show();
-}
     
+        document.getElementById('confirmDownload').addEventListener('click', function() {
+            generateExcelDownload(downloadType.value);
+        },{ once: true });
     
-    function handleDownloadExcel() {
-        if (!window.currentOrder) {
-            showResultPopup("Tidak ada data pesanan untuk di-download.", true);
-            return;
-        }
-        
-        const downloadBtn = document.getElementById("downloadExcel");
-        downloadBtn.disabled = true;
-        downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Excel...';
-        
-        // Check if XLSX is loaded
-        if (typeof XLSX === 'undefined') {
-            loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js")
-                .then(() => {
-                    generateExcel(window.currentOrder);
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerHTML = 'Download Excel';
-                })
-                .catch(error => {
-                    console.error("Failed to load XLSX:", error);
-                    showResultPopup("Gagal memuat library Excel.", true);
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerHTML = 'Download Excel';
-                });
-        } else {
-            generateExcel(window.currentOrder);
-            downloadBtn.disabled = false;
-            downloadBtn.innerHTML = 'Download Excel';
-        }
+        modal.show();
     }
     
-    function generateExcel(order) {
-        const processedOrder = {...order};
+    function generateExcelDownload(downloadType) {
+        let filteredData = [];
+        const now = new Date();
+    
+        switch(downloadType) {
+            case 'all':
+                filteredData = allOrders;
+                break;
+                case 'month':
+                    const selectedMonth = parseInt(document.getElementById('monthSelect').value);
+                    const selectedYear = parseInt(document.getElementById('yearSelect').value);
+                    
+                    // Create start date (1st day of selected month)
+                    const startDate = new Date(selectedYear, selectedMonth, 1);
+                    startDate.setHours(0, 0, 0, 0);
+                    
+                    // Create end date (last day of selected month)
+                    const endDate = new Date(selectedYear, selectedMonth + 1, 0);
+                    endDate.setHours(23, 59, 59, 999);
         
-        // Format values for better readability
-        if (processedOrder.deadline) {
-            processedOrder.deadline = formatTanggal(processedOrder.deadline);
+                    filteredData = allOrders.filter(order => {
+                        const orderDate = new Date(order.timestamp);
+                        return orderDate >= startDate && orderDate <= endDate;
+                    });
+                    break;
+            case 'week':
+                const weekStart = new Date(document.getElementById('weekStart').value);
+                const weekEnd = new Date(document.getElementById('weekEnd').value);
+                weekEnd.setHours(23, 59, 59, 999);
+                filteredData = allOrders.filter(order => {
+                    const orderDate = new Date(order.timestamp);
+                    return orderDate >= weekStart && orderDate <= weekEnd;
+                });
+                break;
+            case 'custom':
+                const customStart = new Date(document.getElementById('customStart').value);
+                const customEnd = new Date(document.getElementById('customEnd').value);
+                customEnd.setHours(23, 59, 59, 999);
+                filteredData = allOrders.filter(order => {
+                    const orderDate = new Date(order.timestamp);
+                    return orderDate >= customStart && orderDate <= customEnd;
+                });
+                break;
         }
-        if (processedOrder.id_desainer && desainerList[processedOrder.id_desainer]) {
-            processedOrder.id_desainer = desainerList[processedOrder.id_desainer];
+    
+        if (filteredData.length === 0) {
+            showResultPopup("Tidak ada data untuk di-download", true);
+            return;
         }
-        if (processedOrder.id_penjahit && penjahitList[processedOrder.id_penjahit]) {
-            processedOrder.id_penjahit = penjahitList[processedOrder.id_penjahit];
-        }
-        if (processedOrder.qc && qcList[processedOrder.qc]) {
-            processedOrder.qc = qcList[processedOrder.qc];
-        }
-        if (processedOrder.id_admin && adminList[processedOrder.id_admin]) {
-            processedOrder.id_admin = adminList[processedOrder.id_admin];
-        }
-        
+    
+        // Format data for Excel
+        const formattedData = filteredData.map(order => ({
+            'Timestamp': formatTimestamp(order.timestamp),
+            'ID Input': order.id_input,
+            'ID Pesanan': order.id_pesanan,
+            'Category': typeProdukList[order.id_type] || '-',
+            'Produk': produkList[order.id_produk] || '-',
+            'PLT': order.platform || '-',
+            'Admin': adminList[order.id_admin] || '-',
+            'QTY': order.qty || '-',
+            'DLN': formatTanggal(order.deadline),
+            'DSG': desainerList[order.id_desainer] || '-',
+            'TIME-dsg': formatTimestamp(order.timestamp_designer),
+            'LAY': order.layout_link || '-',
+            'SEW': penjahitList[order.id_penjahit] || '-',
+            'TIME-sew': formatTimestamp(order.timestamp_penjahit),
+            'QC': qcList[order.id_qc] || '-',
+            'TIME-qc': formatTimestamp(order.timestamp_qc),
+            'PRT': order.status_print || '-',
+            'PROD': order.status_produksi || '-'
+        }));
+    
+        // Create and download Excel file
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet([processedOrder]);
+        const ws = XLSX.utils.json_to_sheet(formattedData);
+    
+        // Set column widths
+        const colWidths = Object.keys(formattedData[0]).map(() => ({ wch: 15 }));
+        ws['!cols'] = colWidths;
+    
+        XLSX.utils.book_append_sheet(wb, ws, "Orders Data");
         
-        XLSX.utils.book_append_sheet(wb, ws, "OrderDetails");
-        XLSX.writeFile(wb, `Order_${order.id_pesanan}.xlsx`);
-        showResultPopup("Excel berhasil didownload!");
+        // Generate filename based on download type
+        let filename = 'orders_';
+        switch(downloadType) {
+            case 'month':
+                filename += `${document.getElementById('monthSelect').value + 1}_${document.getElementById('yearSelect').value}`;
+                break;
+            case 'week':
+            case 'custom':
+                const startDate = new Date(document.getElementById(downloadType === 'week' ? 'weekStart' : 'customStart').value);
+                const endDate = new Date(document.getElementById(downloadType === 'week' ? 'weekEnd' : 'customEnd').value);
+                filename += `${formatTanggal(startDate)}_to_${formatTanggal(endDate)}`;
+                break;
+            default:
+                filename += 'all';
+        }
+        filename += '.xlsx';
+    
+        XLSX.writeFile(wb, filename);
+        showResultPopup("Excel berhasil di-download!");
+        bootstrap.Modal.getInstance(document.getElementById('downloadOptionsModal')).hide();
     }
     
     // Load external scripts dynamically

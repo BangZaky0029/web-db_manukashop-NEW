@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
         '1001': '12341234',   // Lilis's password
         '1002': '123123',      // Ina's password
         '1003': '1212', // Indy
-        '1004': '12345' //Untung 
+        '1004': '12345', //Untung 
+        '1005' : '909090', //Billa
     };
 
     loginForm.addEventListener('submit', function(event) {
