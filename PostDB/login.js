@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Admin credentials (in a real app, this would be securely stored on the server)
     const adminCredentials = {
-        '1001': '12341234',   // Lilis's password
+        '1001': '12341234',   // Vinka's password
         '1002': '123123',      // Ina's password
         '1003': '1212', // Indy
         '1004': '12345', //Untung 

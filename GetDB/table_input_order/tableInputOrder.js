@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     let adminList = {
-        1001: "LILIS",
+        1001: "Vinka",
         1002: "INA",
         1003: "Indy"
     };

@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Mapping nama admin
     const adminNames = {
-        '1001': 'Lilis',
+        '1001': 'Vinka',
         '1002': 'Ina',
         '1003': 'Indy',
         '1004': 'Untung',
-        '1005': 'Billa'
+        '1005': 'Ikbal'
     };
 
     // DB Data untuk Product
@@ -86,7 +86,11 @@ document.addEventListener('DOMContentLoaded', function() {
         { id_produk: 47073, nama_produk: "Tas Koper Bu Ola", id_bahan: 46008},
         { id_produk: 47074, nama_produk: "Renata Bag", id_bahan: 46005},
         { id_produk: 47075, nama_produk: "Estelle Bag", id_bahan: 46001},
-        { id_produk: 47077, nama_produk: "ARA BAG", id_bahan: 46001}
+        { id_produk: 47077, nama_produk: "ARA BAG", id_bahan: 46001},
+        { id_produk: 47078, nama_produk: "Miranda Bag", id_bahan: 46001},
+        { id_produk: 47079, nama_produk: "Laurent Slingbag", id_bahan: 46001},
+        { id_produk: 47080, nama_produk: "Tania", id_bahan: 46001},
+        { id_produk: 47081, nama_produk: "Dalina", id_bahan: 46001}
     ];
     
 
