@@ -16,41 +16,76 @@ document.addEventListener("DOMContentLoaded", function () {
     let popupTimeout;
     let itemsPerPage = calculateItemsPerPage();
 
+    // Admin list mapping
+    const adminList = {
+        1001: "Vinka",
+        1002: "INA", 
+        1003: "Indy"
+    };
+
     // Calculate items per page based on screen size
     function calculateItemsPerPage() {
         return window.innerWidth <= 480 ? 5 : 10;
     }
 
     // Update items per page when window resizes
-    window.addEventListener('resize', function() {
+    window.addEventListener('resize', debounce(function() {
         const newItemsPerPage = calculateItemsPerPage();
         if (newItemsPerPage !== itemsPerPage) {
             itemsPerPage = newItemsPerPage;
-            totalPages = Math.ceil(ordersData.length / itemsPerPage);
-            if (currentPage > totalPages) {
-                currentPage = totalPages || 1;
-            }
+            updatePagination();
             renderTable();
         }
-    });
+    }, 250));
 
+    // Debounce function to limit function calls
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Sort data by id_input (newest first) - optimized sorting
+    function sortDataByNewest(data) {
+        return data.sort((a, b) => {
+            // Convert id_input to numbers for proper numeric sorting
+            const idA = parseInt(a.id_input) || 0;
+            const idB = parseInt(b.id_input) || 0;
+            return idB - idA; // Descending order (newest first)
+        });
+    }
+
+    // Update pagination info
+    function updatePagination() {
+        totalPages = Math.ceil(ordersData.length / itemsPerPage);
+        if (currentPage > totalPages) {
+            currentPage = totalPages || 1;
+        }
+    }
+
+    // Show temporary popup with improved UX
     function showTemporaryPopup(message, type = 'info') {
-        // Clear any existing timeout
         if (popupTimeout) {
             clearTimeout(popupTimeout);
         }
 
-        // Set popup content and class
         searchResultsText.innerHTML = message;
         searchResultsPopup.className = `search-results-popup show ${type}`;
 
-        // Automatically hide after 3 seconds
+        // Auto-hide after 2.5 seconds
         popupTimeout = setTimeout(() => {
             searchResultsPopup.classList.remove('show');
-        }, 2000);
+        }, 2500);
     }
 
-    function fetchOrders() {
+    // Optimized fetch with better error handling
+    async function fetchOrders() {
         // Show loading indicator
         ordersTable.innerHTML = `
             <tr>
@@ -60,85 +95,82 @@ document.addEventListener("DOMContentLoaded", function () {
                 </td>
             </tr>
         `;
-        
-        fetch("http://100.117.80.112:5000/api/get-input-table")
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === "success") {
-                    allOrdersData = data.data;
-                    ordersData = [...allOrdersData];
-                    totalPages = Math.ceil(ordersData.length / itemsPerPage);
-                    renderTable();
-                    showTemporaryPopup("Data berhasil dimuat", 'success');
-                } else {
-                    throw new Error("Failed to fetch data");
-                }
-            })
-            .catch(error => {
-                console.error("Error fetching data:", error);
-                ordersTable.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; color: #e74c3c; padding: 20px;">
-                            <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
-                            <div style="margin-top: 10px;">Gagal memuat data. Silakan coba lagi.</div>
-                        </td>
-                    </tr>
-                `;
-                showTemporaryPopup("Gagal mengambil data. Silakan coba lagi.", 'error');
+
+        try {
+            const response = await fetch("http://100.117.80.112:5000/api/get-input-table", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000 // 10 second timeout
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.status === "success" && data.data) {
+                // Sort data by newest id_input first
+                allOrdersData = sortDataByNewest(data.data);
+                ordersData = [...allOrdersData];
+                
+                // Cache data in sessionStorage
+                try {
+                    sessionStorage.setItem('ordersData', JSON.stringify(allOrdersData));
+                    sessionStorage.setItem('cacheTimestamp', Date.now().toString());
+                } catch(e) {
+                    console.warn("Failed to cache data:", e);
+                }
+                
+                updatePagination();
+                renderTable();
+                showTemporaryPopup(`Data berhasil dimuat (${allOrdersData.length} records)`, 'success');
+            } else {
+                throw new Error(data.message || "Data tidak valid");
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            handleFetchError(error);
+        }
     }
 
-    let adminList = {
-        1001: "Vinka",
-        1002: "INA",
-        1003: "Indy"
-    };
+    // Handle fetch errors with fallback to cache
+    function handleFetchError(error) {
+        const cachedData = loadFromCache();
+        if (cachedData) {
+            showTemporaryPopup("Menggunakan data cache karena koneksi bermasalah", 'warning');
+        } else {
+            ordersTable.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #e74c3c; padding: 20px;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                        <div style="margin-top: 10px;">Gagal memuat data: ${error.message}</div>
+                        <button onclick="fetchOrders()" class="btn btn-primary btn-sm mt-2">
+                            <i class="fas fa-sync"></i> Coba Lagi
+                        </button>
+                    </td>
+                </tr>
+            `;
+            showTemporaryPopup("Gagal mengambil data. Silakan coba lagi.", 'error');
+        }
+    }
 
+    // Optimized text highlighting
     function highlightText(text, searchTerm) {
         if (!searchTerm || !text) return text || "";
-        const regex = new RegExp(`(${searchTerm})`, 'gi');
+        const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedTerm})`, 'gi');
         return text.replace(regex, '<mark class="highlight">$1</mark>');
     }
 
-    function truncateText(text, maxLength = 15) {
-        if (!text) return "";
-        return text.length > maxLength ? 
-            `${text.substring(0, maxLength)}...` : 
-            text;
-    }
-
-    function addImageButtonListeners() {
-        document.querySelectorAll('.show-image-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const imageUrl = this.getAttribute('data-image-url');
-                const thumbnailDiv = this.nextElementSibling;
-                const img = thumbnailDiv.querySelector('img');
-                
-                if (thumbnailDiv.style.display === 'none') {
-                    img.src = img.getAttribute('data-src');
-                    thumbnailDiv.style.display = 'block';
-                    this.innerHTML = '<i class="fas fa-eye-slash"></i>';
-                    this.title = 'Sembunyikan Foto';
-                } else {
-                    thumbnailDiv.style.display = 'none';
-                    this.innerHTML = '<i class="fas fa-camera"></i>';
-                    this.title = 'Tampilkan Foto';
-                }
-            });
-        });
-    }
-
-    // Call this after rendering the table
+    // Optimized table rendering with virtual scrolling concept
     function renderTable() {
         ordersTable.innerHTML = "";
-        let start = (currentPage - 1) * itemsPerPage;
-        let end = start + itemsPerPage;
-        let paginatedOrders = ordersData.slice(start, end);
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const paginatedOrders = ordersData.slice(start, end);
 
         if (paginatedOrders.length === 0) {
             ordersTable.innerHTML = `
@@ -149,73 +181,58 @@ document.addEventListener("DOMContentLoaded", function () {
                     </td>
                 </tr>
             `;
-            showTemporaryPopup("Tidak ada data yang ditemukan", 'warning');
+            if (currentSearchTerms.orderId || currentSearchTerms.namaKet) {
+                showTemporaryPopup("Tidak ada data yang ditemukan untuk pencarian ini", 'warning');
+            }
         } else {
-            // Check if we're on a small screen
-            const isMobile = window.innerWidth <= 768;
+            // Use DocumentFragment for better performance
+            const fragment = document.createDocumentFragment();
             
             paginatedOrders.forEach(order => {
-                let platformClass = order.Platform ? order.Platform.toLowerCase().replace(/\s/g, '') : '';
+                const platformClass = order.Platform ? 
+                    order.Platform.toLowerCase().replace(/\s/g, '') : '';
                 
-                // For mobile, truncate long text to save space
-                const namaKet = order.nama_ket;
-
-                
-                let row = `<tr>
+                const row = document.createElement('tr');
+                row.innerHTML = `
                     <td>${order.TimeTemp || ''}</td>
                     <td>${highlightText(order.id_input || '', currentSearchTerms.orderId)}</td>
                     <td>${highlightText(order.id_pesanan || '', currentSearchTerms.orderId)}</td>
                     <td>${adminList[order.id_admin] || order.id_admin || ''}</td>
                     <td class="platform-${platformClass}">${order.Platform || ''}</td>
                     <td>${order.qty || '0'}</td>
-                    <td>
-                        ${order.link ? 
-                            `<div class="d-flex flex-column align-items-center">
-                                <button class="btn show-image-btn" 
-                                        data-image-url="${order.link}"
-                                        title="Tampilkan Foto">
-                                    <i class="fas fa-camera"></i>
-                                </button>
-                                <div class="image-thumbnail" style="display: none;">
-                                    <img data-src="${order.link}" alt="Order Image" 
-                                         onclick="window.open('${order.link}', '_blank')"
-                                         onerror="this.onerror=null; this.src='path/to/fallback-image.png';">
-                                </div>
-                            </div>` 
-                            : ''}
-                    </td>
-                    <td>${highlightText(namaKet, currentSearchTerms.namaKet)}</td>
+                    <td>${highlightText(order.nama_ket || '', currentSearchTerms.namaKet)}</td>
                     <td>${formatTimestamp(order.Deadline)}</td>
-                </tr>`;
-                ordersTable.innerHTML += row;
+                `;
+                fragment.appendChild(row);
             });
+            
+            ordersTable.appendChild(fragment);
         }
 
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1}`;
+        // Update page info
+        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages || 1} (${ordersData.length} total)`;
         
+        // Update pagination buttons
         document.getElementById("prevPage").disabled = currentPage === 1;
         document.getElementById("nextPage").disabled = currentPage === totalPages || totalPages === 0;
-        
-        // Add at the end of renderTable function
-        addImageButtonListeners();
     }
 
+    // Optimized timestamp formatting
     function formatTimestamp(timestamp) {
         if (!timestamp) return "";
-    
+
         try {
-            let date = new Date(timestamp);
+            const date = new Date(timestamp);
             
             if (isNaN(date.getTime())) {
-                return timestamp; // Return original if invalid date
+                return timestamp;
             }
-        
-            let hours = String(date.getHours()).padStart(2, "0");
-            let minutes = String(date.getMinutes()).padStart(2, "0");
-        
-            let day = String(date.getDate()).padStart(2, "0");
-            let month = String(date.getMonth() + 1).padStart(2, "0");
-        
+
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+
             return `${hours}:${minutes} / ${day}-${month}`;
         } catch (e) {
             console.error("Error formatting date:", e);
@@ -223,7 +240,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function searchData(type) {
+    // Optimized search with debouncing
+    const debouncedSearch = debounce(function(type) {
+        performSearch();
+    }, 300);
+
+    function performSearch() {
         const searchOrderIdValue = searchOrderIdInput.value.trim().toLowerCase();
         const searchNamaKetValue = searchNamaKetInput.value.trim().toLowerCase();
 
@@ -233,32 +255,35 @@ document.addEventListener("DOMContentLoaded", function () {
             namaKet: searchNamaKetValue
         };
 
-        // Combine both search inputs
+        // Filter data based on both search criteria
         ordersData = allOrdersData.filter(order => {
-            const matchOrderId = searchOrderIdValue === '' || 
-                ((order.id_pesanan && order.id_pesanan.toLowerCase().includes(searchOrderIdValue)) ||
-                 (order.id_input && order.id_input.toLowerCase().includes(searchOrderIdValue)));
+            const matchOrderId = !searchOrderIdValue || 
+                (order.id_pesanan && order.id_pesanan.toLowerCase().includes(searchOrderIdValue)) ||
+                (order.id_input && order.id_input.toLowerCase().includes(searchOrderIdValue));
             
-            const matchNamaKet = searchNamaKetValue === '' || 
+            const matchNamaKet = !searchNamaKetValue || 
                 (order.nama_ket && order.nama_ket.toLowerCase().includes(searchNamaKetValue));
             
             return matchOrderId && matchNamaKet;
         });
 
+        // Sort filtered results by newest first
+        ordersData = sortDataByNewest(ordersData);
+
         currentPage = 1;
-        totalPages = Math.ceil(ordersData.length / itemsPerPage);
+        updatePagination();
         renderTable();
 
-        // Show total results found
+        // Show search results count
         const resultsFound = ordersData.length;
         if (resultsFound > 0) {
-            showTemporaryPopup(`Ditemukan ${resultsFound} hasil pencarian`, 'success');
+            showTemporaryPopup(`Ditemukan ${resultsFound} hasil pencarian (diurutkan terbaru)`, 'success');
         } else {
             showTemporaryPopup("Tidak ada hasil yang ditemukan", 'warning');
         }
     }
 
-    // Pagination Listeners
+    // Pagination event listeners
     document.getElementById("prevPage").addEventListener("click", function () {
         if (currentPage > 1) {
             currentPage--;
@@ -273,87 +298,121 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Search Listeners
-    searchOrderIdBtn.addEventListener("click", () => searchData('orderId'));
-    searchNamaKetBtn.addEventListener("click", () => searchData('namaKet'));
+    // Search event listeners with debouncing
+    searchOrderIdBtn.addEventListener("click", () => performSearch());
+    searchNamaKetBtn.addEventListener("click", () => performSearch());
+
+    // Real-time search on input with debouncing
+    searchOrderIdInput.addEventListener("input", () => debouncedSearch('orderId'));
+    searchNamaKetInput.addEventListener("input", () => debouncedSearch('namaKet'));
 
     // Search on Enter key
     searchOrderIdInput.addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
-            searchData('orderId');
-            event.preventDefault(); // Prevent form submission if in a form
+            performSearch();
+            event.preventDefault();
         }
     });
     
     searchNamaKetInput.addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
-            searchData('namaKet');
-            event.preventDefault(); // Prevent form submission if in a form
+            performSearch();
+            event.preventDefault();
         }
     });
 
-    // Refresh Button Listener
+    // Refresh button with improved functionality
     document.getElementById("refreshBtn").addEventListener("click", function () {
+        // Clear search inputs
         searchOrderIdInput.value = "";
         searchNamaKetInput.value = "";
         document.getElementById("platformFilter").value = "all";
-        ordersData = [...allOrdersData];
+        
+        // Reset data and sort by newest
+        ordersData = sortDataByNewest([...allOrdersData]);
         currentPage = 1;
-        totalPages = Math.ceil(ordersData.length / itemsPerPage);
         currentSearchTerms = { orderId: '', namaKet: '' };
+        
+        updatePagination();
         renderTable();
-        showTemporaryPopup("Data berhasil direset", 'info');
+        showTemporaryPopup("Data berhasil direset dan diurutkan", 'info');
     });
 
-    // Platform Filter Listener
+    // Platform filter with sorting
     document.getElementById("platformFilter").addEventListener("change", function () {
-        let selectedPlatform = this.value;
+        const selectedPlatform = this.value;
+        
         if (selectedPlatform === "all") {
             ordersData = [...allOrdersData];
         } else {
             ordersData = allOrdersData.filter(order => order.Platform === selectedPlatform);
         }
+        
+        // Sort filtered data by newest
+        ordersData = sortDataByNewest(ordersData);
+        
         currentPage = 1;
-        totalPages = Math.ceil(ordersData.length / itemsPerPage);
+        updatePagination();
         renderTable();
         
         const platformMessage = selectedPlatform === 'all' 
-            ? 'Menampilkan semua platform' 
-            : `Menampilkan platform ${selectedPlatform}`;
+            ? 'Menampilkan semua platform (diurutkan terbaru)' 
+            : `Menampilkan platform ${selectedPlatform} (diurutkan terbaru)`;
         showTemporaryPopup(platformMessage, 'info');
     });
 
-    // Handle network connectivity issues
+    // Network status handling
     window.addEventListener('online', function() {
         showTemporaryPopup("Anda kembali online! Memuat ulang data...", 'success');
         setTimeout(fetchOrders, 1000);
     });
     
     window.addEventListener('offline', function() {
-        showTemporaryPopup("Anda sedang offline. Beberapa fitur mungkin tidak berfungsi.", 'warning');
+        showTemporaryPopup("Anda sedang offline. Menampilkan data cache.", 'warning');
     });
 
-    // Check if we have cached data in sessionStorage
-    const loadFromCache = () => {
+    // Enhanced cache management
+    function loadFromCache() {
         const cachedData = sessionStorage.getItem('ordersData');
-        if (cachedData) {
-            try {
-                allOrdersData = JSON.parse(cachedData);
-                ordersData = [...allOrdersData];
-                totalPages = Math.ceil(ordersData.length / itemsPerPage);
-                renderTable();
-                showTemporaryPopup("Data dimuat dari cache", 'info');
-                return true;
-            } catch(e) {
-                console.error("Error loading from cache:", e);
-                return false;
+        const cacheTimestamp = sessionStorage.getItem('cacheTimestamp');
+        
+        if (cachedData && cacheTimestamp) {
+            const cacheAge = Date.now() - parseInt(cacheTimestamp);
+            const maxAge = 10 * 60 * 1000; // 10 minutes
+            
+            if (cacheAge < maxAge) {
+                try {
+                    allOrdersData = sortDataByNewest(JSON.parse(cachedData));
+                    ordersData = [...allOrdersData];
+                    updatePagination();
+                    renderTable();
+                    showTemporaryPopup("Data dimuat dari cache (diurutkan terbaru)", 'info');
+                    return true;
+                } catch(e) {
+                    console.error("Error loading from cache:", e);
+                    sessionStorage.removeItem('ordersData');
+                    sessionStorage.removeItem('cacheTimestamp');
+                }
+            } else {
+                // Cache expired
+                sessionStorage.removeItem('ordersData');
+                sessionStorage.removeItem('cacheTimestamp');
             }
         }
         return false;
-    };
-
-    // If no cached data or loading from cache fails, fetch fresh data
-    if (!loadFromCache()) {
-        fetchOrders();
     }
+
+    // Initialize application
+    function init() {
+        // Try to load from cache first, if not available or expired, fetch fresh data
+        if (!loadFromCache()) {
+            fetchOrders();
+        } else {
+            // Fetch fresh data in background to update cache
+            setTimeout(fetchOrders, 2000);
+        }
+    }
+
+    // Start the application
+    init();
 });
