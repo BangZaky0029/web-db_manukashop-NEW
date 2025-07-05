@@ -95,66 +95,37 @@ document.addEventListener("DOMContentLoaded", function () {
                 </td>
             </tr>
         `;
-
-        try {
-            const response = await fetch("http://100.117.80.112:5000/api/get-input-table", {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000 // 10 second timeout
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.status === "success" && data.data) {
-                // Sort data by newest id_input first
-                allOrdersData = sortDataByNewest(data.data);
-                ordersData = [...allOrdersData];
-                
-                // Cache data in sessionStorage
-                try {
-                    sessionStorage.setItem('ordersData', JSON.stringify(allOrdersData));
-                    sessionStorage.setItem('cacheTimestamp', Date.now().toString());
-                } catch(e) {
-                    console.warn("Failed to cache data:", e);
+        
+        fetch("http://100.117.80.112:5000/api/get-input-table")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Network response was not ok");
                 }
-                
-                updatePagination();
-                renderTable();
-                showTemporaryPopup(`Data berhasil dimuat (${allOrdersData.length} records)`, 'success');
-            } else {
-                throw new Error(data.message || "Data tidak valid");
-            }
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            handleFetchError(error);
-        }
-    }
-
-    // Handle fetch errors with fallback to cache
-    function handleFetchError(error) {
-        const cachedData = loadFromCache();
-        if (cachedData) {
-            showTemporaryPopup("Menggunakan data cache karena koneksi bermasalah", 'warning');
-        } else {
-            ordersTable.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; color: #e74c3c; padding: 20px;">
-                        <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
-                        <div style="margin-top: 10px;">Gagal memuat data: ${error.message}</div>
-                        <button onclick="fetchOrders()" class="btn btn-primary btn-sm mt-2">
-                            <i class="fas fa-sync"></i> Coba Lagi
-                        </button>
-                    </td>
-                </tr>
-            `;
-            showTemporaryPopup("Gagal mengambil data. Silakan coba lagi.", 'error');
-        }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === "success") {
+                    allOrdersData = data.data;
+                    ordersData = [...allOrdersData];
+                    totalPages = Math.ceil(ordersData.length / itemsPerPage);
+                    renderTable();
+                    showTemporaryPopup("Data berhasil dimuat", 'success');
+                } else {
+                    throw new Error("Failed to fetch data");
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching data:", error);
+                ordersTable.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #e74c3c; padding: 20px;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                            <div style="margin-top: 10px;">Gagal memuat data. Silakan coba lagi.</div>
+                        </td>
+                    </tr>
+                `;
+                showTemporaryPopup("Gagal mengambil data. Silakan coba lagi.", 'error');
+            });
     }
 
     // Optimized text highlighting

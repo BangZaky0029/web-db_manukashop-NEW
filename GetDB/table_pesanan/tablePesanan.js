@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     async function fetchOrders() {
         try {
-            const response = await fetch("http://100.117.80.112:5000/api/get-orders");
+            const response = await fetch("http://100.124.58.32:5000/api/get-orders");
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -588,7 +588,7 @@ function filterOrders() {
     async function fetchSortedOrders() {
         try {
             console.log("Fetching sorted orders...");
-            const response = await fetch('http://100.117.80.112:5000/api/get_sorted_orders'); 
+            const response = await fetch('http://100.124.58.32:5000/api/get_sorted_orders'); 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -670,7 +670,7 @@ function filterOrders() {
 
     async function fetchReferenceData() {
     try {
-        const response = await fetch("http://100.117.80.112:5000/api/references");
+        const response = await fetch("http://100.124.58.32:5000/api/references");
         
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -736,7 +736,7 @@ function filterOrders() {
         }
     
         try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get_link_foto/${id_input}`);
+            const response = await fetch(`http://100.124.58.32:5000/api/get_link_foto/${id_input}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -827,7 +827,7 @@ function filterOrders() {
 
 
     async function fetchNamaKet(idInput) {
-        const baseUrl = "http://100.117.80.112:5000"; // Sesuaikan dengan URL API kamu
+        const baseUrl = "http://100.124.58.32:5000"; // Sesuaikan dengan URL API kamu
         const url = `${baseUrl}/api/get_nama_ket/${idInput}`;
     
         try {
@@ -898,7 +898,7 @@ function filterOrders() {
         confirmDeleteBtn.disabled = true;
         confirmDeleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
     
-        fetch(`http://100.117.80.112:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
+        fetch(`http://100.124.58.32:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
             method: "DELETE",
             headers: { "Content-Type": "application/json" }
         })
@@ -1063,7 +1063,7 @@ function filterOrders() {
     
     function updateOrder(id_input, column, value) {
         // Use the correct endpoint based on the Python API
-        const endpoint = "http://100.117.80.112:5000/api/update-print-status-layout";
+        const endpoint = "http://100.124.58.32:5000/api/update-print-status-layout";
     
         const confirmUpdateBtn = document.getElementById("confirmUpdateBtn");
         confirmUpdateBtn.disabled = true;

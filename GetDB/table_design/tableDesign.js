@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     async function fetchOrders() {
         try {
-            const response = await fetch("http://100.117.80.112:5000/api/get_table_design");
+            const response = await fetch("http://100.124.58.32:5000/api/get_table_design");
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -635,7 +635,7 @@ document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async 
                 formData.append('layout_file', file);
                 formData.append('id_input', id_input);
 
-                const response = await fetch('http://100.117.80.112:5000/api/update-layout', {
+                const response = await fetch('http://100.124.58.32:5000/api/update-layout', {
                     method: 'POST',
                     body: formData
                 });
@@ -851,7 +851,7 @@ document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async 
                     formData.append('layout_file', file);
                     formData.append('id_input', id_input);
 
-                    const response = await fetch('http://100.117.80.112:5000/api/update-layout', {
+                    const response = await fetch('http://100.124.58.32:5000/api/update-layout', {
                         method: 'POST',
                         body: formData
                     });
@@ -1103,7 +1103,7 @@ document.querySelector('.confirm-bulk-upload')?.addEventListener('click', async 
             let produk = btn.getAttribute('data-produk');
 
             try {
-                const response = await fetch(`http://100.117.80.112:5000/api/get_nama_ket/${id_input}`);
+                const response = await fetch(`http://100.124.58.32:5000/api/get_nama_ket/${id_input}`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.nama_ket) {
@@ -1212,7 +1212,7 @@ function showTopNotification(message) {
         formData.append('id_input', id_input);
     
         try {
-            const response = await fetch('http://100.117.80.112:5000/api/update-layout', {
+            const response = await fetch('http://100.124.58.32:5000/api/update-layout', {
                 method: 'POST',
                 body: formData
             });
@@ -1607,7 +1607,7 @@ function showTopNotification(message) {
     
     async function fetchReferenceData() {
         try {
-            const response = await fetch("http://100.117.80.112:5000/api/references");
+            const response = await fetch("http://100.124.58.32:5000/api/references");
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             
             const data = await response.json();
@@ -1663,7 +1663,7 @@ function showTopNotification(message) {
         }
     
         try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get_link_foto/${id_input}`);
+            const response = await fetch(`http://100.124.58.32:5000/api/get_link_foto/${id_input}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1745,7 +1745,7 @@ function showTopNotification(message) {
     }
 
     async function fetchNamaKet(idInput) {
-        const baseUrl = "http://100.117.80.112:5000"; // Sesuaikan dengan URL API kamu
+        const baseUrl = "http://100.124.58.32:5000"; // Sesuaikan dengan URL API kamu
         const url = `${baseUrl}/api/get_nama_ket/${idInput}`;
     
         try {
@@ -1774,7 +1774,7 @@ function showTopNotification(message) {
         }
     
         try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get_id_admin/${id_input}`);
+            const response = await fetch(`http://100.124.58.32:5000/api/get_id_admin/${id_input}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1836,7 +1836,7 @@ function showTopNotification(message) {
         confirmDeleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
     
         // Corrected endpoint to use id_input instead of id_pesanan
-        fetch(`http://100.117.80.112:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
+        fetch(`http://100.124.58.32:5000/api/delete-order/${encodeURIComponent(selectedOrderId.trim())}`, { 
             method: "DELETE",
             headers: { "Content-Type": "application/json" }
         })
@@ -1978,7 +1978,7 @@ function showTopNotification(message) {
     }
     
     function updateOrder(id_input, column, value) {
-        const endpoint = "http://100.117.80.112:5000/api/update-design";
+        const endpoint = "http://100.124.58.32:5000/api/update-design";
         
         // Check if confirmUpdateBtn exists before accessing
         const confirmUpdateBtn = document.getElementById("confirmUpdateBtn");

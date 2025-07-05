@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     async function fetchReferenceData() {
         try {
-            const response = await fetch("http://100.117.80.112:5000/api/references");
+            const response = await fetch("http://100.124.58.32:5000/api/references");
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     async function fetchOrders() {
         try {
-            const response = await fetch("http://100.117.80.112:5000/api/get_table_urgent");
+            const response = await fetch("http://100.124.58.32:5000/api/get_table_urgent");
     
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -155,7 +155,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     async function fetchLayoutLink(id_input) {
         try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get-layout?id_input=${encodeURIComponent(id_input)}`);
+            const response = await fetch(`http://100.124.58.32:5000/api/get-layout?id_input=${encodeURIComponent(id_input)}`);
             const data = await response.json();
     
             if (response.ok && data.length > 0) {
@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function fetchNamaKet(idInput) {
-        const baseUrl = "http://100.117.80.112:5000"; // Sesuaikan dengan URL API kamu
+        const baseUrl = "http://100.124.58.32:5000"; // Sesuaikan dengan URL API kamu
         const url = `${baseUrl}/api/get_nama_ket/${idInput}`;
     
         try {
@@ -197,7 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     
         try {
-            const response = await fetch(`http://100.117.80.112:5000/api/get_link_foto/${id_input}`);
+            const response = await fetch(`http://100.124.58.32:5000/api/get_link_foto/${id_input}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
